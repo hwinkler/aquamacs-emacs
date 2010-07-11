@@ -1615,17 +1615,43 @@ of ignored grammatical constructions. */)
       tag = sxhash (buffer, 0);
     }
 
-  NSArray *errdetails;
+  NSArray *grammarDetails;
 
   /* to do: use long version */
   NSRange first_word = [sc checkGrammarOfString: [NSString stringWithUTF8String: SDATA (sentence)] startingAt:((NSInteger) 0)
-				       language:nil wrap:NO inSpellDocumentWithTag:tag details:&errdetails];
+				       language:nil wrap:NO inSpellDocumentWithTag:tag details:&grammarDetails];
 
-  UNBLOCK_INPUT;
-  if (first_word.location < 0)
+  if (first_word.location < 0) {
+    UNBLOCK_INPUT;
     return Qnil;
-  else
-    return Fcons (make_number ((int) first_word.location), make_number ((int) first_word.length));
+  } else {
+    int guessCount;
+    Lisp_Object retval = Qnil;
+    Lisp_Object drange;
+    Lisp_Object ddescription;
+    Lisp_Object guessList = Qnil;
+    NSRange detailRange;
+    NSString *detailDescription;
+    NSArray *guesses;
+    int i;
+    for (NSDictionary *detail in grammarDetails) {
+      detailRange = [[detail objectForKey:NSGrammarRange] rangeValue];
+      detailDescription = [detail objectForKey:NSGrammarUserDescription];
+      guesses = [detail objectForKey:NSGrammarCorrections];
+      drange = Fcons (make_number (detailRange.location), 
+		      make_number (detailRange.length));
+      ddescription = build_string ([detailDescription UTF8String]);
+      guessCount = [guesses count];
+      for (i = 0; i < guessCount; i++) {
+	// build Lisp list of strings
+	guessList = Fcons(build_string ([[guesses objectAtIndex:i] UTF8String]),
+			  guessList);
+      }
+      retval = Fcons (Fcons (drange, Fcons (ddescription, Fcons (guessList, Qnil))), retval);
+    }
+    UNBLOCK_INPUT;
+    return retval;
+  }
 }
 
 
