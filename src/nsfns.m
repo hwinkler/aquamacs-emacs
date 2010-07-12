@@ -1621,6 +1621,8 @@ of ignored grammatical constructions. */)
   NSRange first_word = [sc checkGrammarOfString: [NSString stringWithUTF8String: SDATA (sentence)] startingAt:((NSInteger) 0)
 				       language:nil wrap:NO inSpellDocumentWithTag:tag details:&grammarDetails];
 
+  [sc updateSpellingPanelWithGrammarString: [NSString stringWithUTF8String: SDATA (sentence)] detail:[grammarDetails objectAtIndex:0]];
+
   if (first_word.location < 0) {
     UNBLOCK_INPUT;
     return Qnil;
