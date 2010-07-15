@@ -617,6 +617,43 @@ sentence boundaries are too far between."
       (if flyspell-issue-message-flag (message "Spell Checking completed."))
       ))) 
 
+(defcustom ns-spellchecker-mark-grammar t
+  "If non-nil, mark grammar as well as spelling errors, when
+`ispell-program-name' is set to \"NSSpellChecker\"")
+
+(defface flyspell-grammar
+  '((((class color)) (:foreground "Green" :bold t :underline t))
+    (t (:bold t)))
+  "Face used for marking grammar error."
+  :group 'flyspell)
+
+(defun flyspell-highlight-grammar (beg end &optional poss)
+  "Highlight text between BEG and END as a grammar error, using an overlay. 
+POSS is usually a list of possible grammar corrections."
+  (let ((inhibit-read-only t))
+    (unless (run-hook-with-args-until-success
+	     'flyspell-grammar-hook beg end poss)
+      (if (or flyspell-highlight-properties
+	      (not (flyspell-properties-at-p beg)))
+	  (progn
+	    ;; we cleanup all the overlay that are in the region, not
+	    ;; beginning at the word start position
+	    (if (< (1+ beg) end)
+		(let ((os (overlays-in (1+ beg) end)))
+		  (while (consp os)
+		    (if (flyspell-overlay-p (car os))
+			(delete-overlay (car os)))
+		    (setq os (cdr os)))))
+	    ;; we cleanup current overlay at the same position
+            (flyspell-unhighlight-at beg)
+	    ;; now we can use a new overlay
+	    (setq flyspell-overlay
+		  (make-flyspell-overlay
+		   beg end
+		   'flyspell-grammar
+		   'highlight)))))))
+  
+
 ;; ----------------------------------------------------------------------
 ;; Flyspell context menu inherits Aquamacs's generic context menu (as
 ;; a copy, so the inheritance can be disabled without affecting the
