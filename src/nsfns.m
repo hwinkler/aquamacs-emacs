@@ -1635,8 +1635,12 @@ of ignored grammatical constructions. */)
     NSRange detailRange;
     NSString *detailDescription;
     NSArray *guesses;
-    int i;
-    for (NSDictionary *detail in grammarDetails) {
+    NSDictionary *detail;
+    int i, j;
+    j = [grammarDetails count];
+    // preserve order of results
+    while (--j >= 0) {
+      detail = [grammarDetails objectAtIndex:j];
       detailRange = [[detail objectForKey:NSGrammarRange] rangeValue];
       detailDescription = [detail objectForKey:NSGrammarUserDescription];
       guesses = [detail objectForKey:NSGrammarCorrections];
