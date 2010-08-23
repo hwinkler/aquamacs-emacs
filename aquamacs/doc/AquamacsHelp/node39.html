@@ -7,8 +7,8 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
   Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
 <HTML>
 <HEAD>
-<TITLE>Changes-- 1.9</TITLE>
-<META NAME="description" CONTENT="Changes-- 1.9">
+<TITLE>Changes-- 1.9.1 </TITLE>
+<META NAME="description" CONTENT="Changes-- 1.9.1 ">
 <META NAME="keywords" CONTENT="aquamacs">
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
@@ -27,112 +27,71 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 
 <BODY >
 <!--Navigation Panel-->
-<A NAME="tex2html668"
+<A NAME="tex2html670"
   HREF="node40.html">
 <IMG WIDTH="32" HEIGHT="32" ALIGN="BOTTOM" BORDER="0" ALT="next"
  SRC="./next.png"></A> 
-<A NAME="tex2html664"
+<A NAME="tex2html666"
   HREF="node38.html">
 <IMG WIDTH="32" HEIGHT="32" ALIGN="BOTTOM" BORDER="0" ALT="up"
  SRC="./up.png"></A> 
-<A NAME="tex2html658"
+<A NAME="tex2html660"
   HREF="node38.html">
 <IMG WIDTH="32" HEIGHT="32" ALIGN="BOTTOM" BORDER="0" ALT="previous"
  SRC="./prev.png"></A> 
-<A NAME="tex2html666"
+<A NAME="tex2html668"
   HREF="node1.html">
 <IMG WIDTH="32" HEIGHT="32" ALIGN="BOTTOM" BORDER="0" ALT="contents"
  SRC="./contents.png"></A>  
 <BR>
-<B> Next:</B> <A NAME="tex2html669"
-  HREF="node40.html">Changes  1.8c</A>
-<B> Up:</B> <A NAME="tex2html665"
+<B> Next:</B> <A NAME="tex2html671"
+  HREF="node40.html">Changes  1.9</A>
+<B> Up:</B> <A NAME="tex2html667"
   HREF="node38.html">Aquamacs Emacs: What's New</A>
-<B> Previous:</B> <A NAME="tex2html659"
+<B> Previous:</B> <A NAME="tex2html661"
   HREF="node38.html">Aquamacs Emacs: What's New</A>
- &nbsp; <B>  <A NAME="tex2html667"
+ &nbsp; <B>  <A NAME="tex2html669"
   HREF="node1.html">Contents</A></B> 
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
 <H2><A NAME="SECTION000141000000000000000">
-Changes-- 1.9</A>
+Changes-- 1.9.1 </A>
 </H2>
 
 <P>
-<I>Interested in trying out the Aquamacs 2.0 series, based on Cocoa and Emacs 23?  As of Late 2009, we're still working <I>on</I> it, but we've already got a lot to show!  <TT><A NAME="tex2html34"
-  HREF="http://aquamacs.org/nightlies.shtml">http://aquamacs.org/nightlies.shtml</A></TT></I>
+Auto Save files are now stored in&nbsp;/Library/Caches/Aquamacs Emacs.  This way, they survive reboots such as after system crashes (kernel panics, etc.).
+Reported by Neil Best, Justin Pitts and Richard Busby.
+
+<P>
+Auto Save files and Session files are purged after 31 days.
+
+<P>
+TeX / LaTeX macros are now found more reliably when using TeXLive (`TeX-macro-global' is configured differently).
+Reported by Wolfgang Meiners.
+
+<P>
+LaTeX master files in different directories are now found reliably when calling `Jump to PDF'.
+Reported buy Mac Pigman.
+
+<P>
+In some circumstances, point position was changed when switching back and forth between tabs directly and also via other buffer-switching mechanisms such as opening new files.
+
+<P>
+Copying bug reports and other mail to the pasteboard in order to send them with GMail or another mail program now works reliably.
+Reported by Matt Mollison.
+
+<P>
+PHP-mode has been updated to version 1.5.0.
 
 <P>
 
-<UL>
-<LI>Copy (Command-c) works again reliably for text selected by mouse.   However, the previous improvement avoiding duplicate entries in the kill ring has been reverted.
-Reported by Tom van Vleck.
-
 <P>
-</LI>
-<LI>Jumping to a LaTeX error after compilation works more reliably now.  The LaTeX-command setting has been changed to include `file-line-error' style.
-Suggested by Enrico Franconi.
-
-<P>
-</LI>
-<LI>Recognize Objective C files (extensions .m and .h) by their content.
-Patch by Kendall Gelner and D.R.
-
-<P>
-</LI>
-<LI>Automatic word wrapping works better in large hard-wrapped (auto-fill-mode) documents with occasional (6+) over-long lines.
-
-<P>
-</LI>
-<LI>The Apple Help books (for Aquamacs, Emacs and the Emacs Lisp Reference) now work on 10.6 ``Snow Leopard''.
-Reported by Philippe Sismondi.
-
-<P>
-</LI>
-<LI>Aquamacs now by default enables synctex when compiling latex documents.  
-
-<P>
-</LI>
-<LI>CSS-Mode has been revised to match the GNU Emacs 22/23 CSS mode.
-
-<P>
-</LI>
-</UL>
-
-<P>
-<HR>
-<!--Navigation Panel-->
-<A NAME="tex2html668"
-  HREF="node40.html">
-<IMG WIDTH="32" HEIGHT="32" ALIGN="BOTTOM" BORDER="0" ALT="next"
- SRC="./next.png"></A> 
-<A NAME="tex2html664"
-  HREF="node38.html">
-<IMG WIDTH="32" HEIGHT="32" ALIGN="BOTTOM" BORDER="0" ALT="up"
- SRC="./up.png"></A> 
-<A NAME="tex2html658"
-  HREF="node38.html">
-<IMG WIDTH="32" HEIGHT="32" ALIGN="BOTTOM" BORDER="0" ALT="previous"
- SRC="./prev.png"></A> 
-<A NAME="tex2html666"
-  HREF="node1.html">
-<IMG WIDTH="32" HEIGHT="32" ALIGN="BOTTOM" BORDER="0" ALT="contents"
- SRC="./contents.png"></A>  
-<BR>
-<B> Next:</B> <A NAME="tex2html669"
-  HREF="node40.html">Changes  1.8c</A>
-<B> Up:</B> <A NAME="tex2html665"
-  HREF="node38.html">Aquamacs Emacs: What's New</A>
-<B> Previous:</B> <A NAME="tex2html659"
-  HREF="node38.html">Aquamacs Emacs: What's New</A>
- &nbsp; <B>  <A NAME="tex2html667"
-  HREF="node1.html">Contents</A></B> 
-<!--End of Navigation Panel-->
+<BR><HR>
 <ADDRESS>
 <I>David</I>
-<BR><I>2009-10-01</I>
+<BR><I>2010-08-23</I>
 </ADDRESS>
 </BODY>
 </HTML>
