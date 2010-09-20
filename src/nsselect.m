@@ -242,6 +242,11 @@ ns_handle_selection_request (struct input_event *event)
   Lisp_Object selection_name, selection_data, target_symbol, data;
   Lisp_Object successful_p, rest;
 
+  assert (pb != nil);
+  assert ([(NSPasteboard *)pb name] != nil);
+  NSLog (@"pb name: %@, type: %@\n", [(NSPasteboard *)pb name], type);
+  assert (type);
+
   selection_name = ns_string_to_symbol ([(NSPasteboard *)pb name]);
   target_symbol = ns_string_to_symbol (type);
   selection_data = assq_no_quit (selection_name, Vselection_alist);
