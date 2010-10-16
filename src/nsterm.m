@@ -734,6 +734,13 @@ ns_focus (struct frame *f, NSRect *r, int n)
 /*debug_lock--; */
             }
 
+          if (view) 
+	    {
+	      EmacsFullWindow *win = (EmacsFullWindow *) [view window];
+	      if ([win isKindOfClass:[EmacsFullWindow class]])
+		  [[win getNormalWindow] orderOut:nil];
+	    }
+
           if (view)
 #ifdef NS_IMPL_GNUSTEP
             r ? [view lockFocusInRect: u] : [view lockFocus];
@@ -951,6 +958,7 @@ ns_raise_frame (struct frame *f)
      Bring window to foreground and make it active
    -------------------------------------------------------------------------- */
 {
+
   NSView *view = FRAME_NS_VIEW (f);
   check_ns ();
   BLOCK_INPUT;
@@ -959,6 +967,7 @@ ns_raise_frame (struct frame *f)
     {
       [[view window] makeKeyAndOrderFront: NSApp];
     }
+
   UNBLOCK_INPUT;
 }
 
@@ -1032,7 +1041,6 @@ ns_frame_rehighlight (struct frame *frame)
 	}
     }
 }
-
 
 void
 x_make_frame_visible (struct frame *f)
@@ -1152,10 +1160,6 @@ x_set_offset (struct frame *f, int xoff, int yoff, int change_grav)
 
   NSTRACE (x_set_offset);
 
-  /* Refuse to change one or both offsets if in full-screen mode. */
-  if (f->want_fullscreen & FULLSCREEN_BOTH)
-    return;
-
   BLOCK_INPUT;
 
   f->left_pos = xoff;
@@ -1203,9 +1207,6 @@ x_set_window_size (struct frame *f, int change_grav, int cols, int rows)
        && oldTB == tb))
     return;
 
-  if (f->want_fullscreen & FULLSCREEN_BOTH)
-    return;
-
 /*fprintf (stderr, "\tsetWindowSize: %d x %d, font size %d x %d\n", cols, rows, FRAME_COLUMN_WIDTH (f), FRAME_LINE_HEIGHT (f)); */
 
   BLOCK_INPUT;
@@ -1221,8 +1222,14 @@ x_set_window_size (struct frame *f, int change_grav, int cols, int rows)
   f->scroll_bar_actual_width = NS_SCROLL_BAR_WIDTH (f);
   compute_fringe_widths (f, 0);
 
-  pixelwidth =  FRAME_TEXT_COLS_TO_PIXEL_WIDTH   (f, cols);
-  pixelheight = FRAME_TEXT_LINES_TO_PIXEL_HEIGHT (f, rows);
+  if ([window isKindOfClass:[EmacsFullWindow class]]) {
+      pixelwidth = [[window screen] frame].size.width;
+      pixelheight = [[window screen] frame].size.height;
+  }
+  else {
+      pixelwidth =  FRAME_TEXT_COLS_TO_PIXEL_WIDTH   (f, cols);
+      pixelheight = FRAME_TEXT_LINES_TO_PIXEL_HEIGHT (f, rows);
+  }
 
   /* If we have a toolbar, take its height into account. */
   if (tb)
@@ -1240,7 +1247,7 @@ x_set_window_size (struct frame *f, int change_grav, int cols, int rows)
                   + FRAME_NS_TOOLBAR_HEIGHT (f);
 
   /* constrain to screen if we can */
-  if (screen)
+  if (screen && ![window isKindOfClass:[EmacsFullWindow class]])
     {
       NSSize sz = [screen visibleFrame].size;
       NSSize ez = { wr.size.width - sz.width, wr.size.height - sz.height };
@@ -1287,7 +1294,7 @@ x_set_window_size (struct frame *f, int change_grav, int cols, int rows)
   change_frame_size (f, rows, cols, 0, 1, 0); /* pretend, delay, safe */
   FRAME_PIXEL_WIDTH (f) = pixelwidth;
   FRAME_PIXEL_HEIGHT (f) = pixelheight;
-/*  SET_FRAME_GARBAGED (f); // this short-circuits expose call in drawRect */
+ /*  SET_FRAME_GARBAGED (f); // this short-circuits expose call in drawRect */
 
   mark_window_cursors_off (XWINDOW (f->root_window));
   cancel_mouse_face (f);
@@ -1890,6 +1897,9 @@ ns_define_frame_cursor (struct frame *f, Cursor cursor)
       EmacsView *view = FRAME_NS_VIEW (f);
       FRAME_POINTER_TYPE (f) = cursor;
       [[view window] invalidateCursorRectsForView: view];
+      /* Redisplay assumes this function also draws the changed frame
+         cursor, but this function doesn't, so do it explicitly.  */
+      x_update_cursor (f, 1);
     }
 }
 
@@ -2290,20 +2300,7 @@ ns_draw_fringe_bitmap (struct window *w, struct glyph_row *row,
 
   /* Must clip because of partially visible lines.  */
   rowY = WINDOW_TO_FRAME_PIXEL_Y (w, row->y);
-  if (p->y < rowY)
-    {
-      /* Adjust position of "bottom aligned" bitmap on partially
-	 visible last row.  */
-      int oldY = row->y;
-      int oldVH = row->visible_height;
-      row->visible_height = p->h;
-      row->y -= rowY - p->y;
-      ns_clip_to_row (w, row, -1, NO);
-      row->y = oldY;
-      row->visible_height = oldVH;
-    }
-  else
-    ns_clip_to_row (w, row, -1, YES);
+  ns_clip_to_row (w, row, -1, YES);
 
   if (p->bx >= 0 && !p->overlay_p)
     {
@@ -2433,10 +2430,7 @@ ns_draw_window_cursor (struct window *w, struct glyph_row *glyph_row,
       NSRectFill (r);
       break;
     case HOLLOW_BOX_CURSOR:
-      NSRectFill (r);
-      [FRAME_BACKGROUND_COLOR (f) set];
-      NSRectFill (NSInsetRect (r, 1, 1));
-      [FRAME_CURSOR_COLOR (f) set];
+      NSFrameRect (r);
       break;
     case HBAR_CURSOR:
       s = r;
@@ -2451,14 +2445,15 @@ ns_draw_window_cursor (struct window *w, struct glyph_row *glyph_row,
       NSRectFill (s);
       break;
     }
-  ns_unfocus (f);
 
   /* draw the character under the cursor 
    Doesn't look good for bar cursors - so don't do it then.*/
   if (cursor_type != NO_CURSOR && cursor_type != BAR_CURSOR
       && cursor_type != HOLLOW_BOX_CURSOR)
-    draw_phys_cursor_glyph (w, glyph_row, DRAW_CURSOR);
-
+    {
+      draw_phys_cursor_glyph (w, glyph_row, DRAW_CURSOR);
+    }
+  ns_unfocus (f);
 #ifdef NS_IMPL_COCOA
   NSEnableScreenUpdates ();
 #endif
@@ -3528,217 +3523,37 @@ x_wm_set_icon_position (struct frame *f, int icon_x, int icon_y)
   /* XXX irrelevant under NS */
 }
 
-
-/* ==========================================================================
-
-   Fullscreen
-
-   ========================================================================== */
-
-#ifndef NSAppKitVersionNumber10_5
-#define NSAppKitVersionNumber10_5 949
-#endif
-
-/* Allow for compilation with pre-10.6 SDKs */
-#define _NSApplicationPresentationAutoHideDock  (1 <<  0)
-#define _NSApplicationPresentationAutoHideMenuBar  (1 <<  2)
-
-static Lisp_Object ns_fullscreen_vertical_scrollbar_state = NULL;
-
 static void
 ns_fullscreen_hook  (f)
 FRAME_PTR f;
 {
+#ifdef NS_IMPL_COCOA
+  EmacsWindow *new_window;
+  NSRect r;
   int rows, cols;
-  int fs =0;
-  int width, height, ign;
-  Lisp_Object frame;
-  XSETFRAME (frame, f);
 
-#ifdef NS_IMPL_COCOA
-  if (f->async_visible)
-    {
-      EmacsView *view = FRAME_NS_VIEW (f);
+  new_window = [(EmacsWindow *) [FRAME_NS_VIEW (f) window]
+		 setFullscreen:(f->want_fullscreen & FULLSCREEN_BOTH ? YES : NO)];
+  FRAME_NS_WINDOW(f) = new_window;
 
-      if ([view respondsToSelector:@selector(exitFullScreenModeWithOptions:)])
-	{
-	  NSDictionary *opts;
+  r = [new_window contentRectForFrameRect:[new_window frame]];
+  cols = FRAME_PIXEL_WIDTH_TO_TEXT_COLS(f, r.size.width);
+  rows = FRAME_PIXEL_HEIGHT_TO_TEXT_LINES(f, r.size.height);
 
-	  BLOCK_INPUT;
-	  NSDisableScreenUpdates();
+  change_frame_size (f, rows, cols, 0, 1, 0); /* pretend, delay, safe */
+  FRAME_PIXEL_WIDTH (f) = (int)r.size.width;
+  FRAME_PIXEL_HEIGHT (f) = (int)r.size.height;
 
-	  switch (f->want_fullscreen)
-	    {
-	    case FULLSCREEN_BOTH:
-	      if (NSAppKitVersionNumber < NSAppKitVersionNumber10_5)
-		{
-		  opts = [NSDictionary dictionaryWithObjectsAndKeys: nil];
-		} else if (NSAppKitVersionNumber < NSAppKitVersionNumber10_5+1) /* not 10.6 yet? */
-		{
-		  opts = [NSDictionary dictionaryWithObjectsAndKeys:
-					   [NSNumber numberWithBool:NO],
-				       NSFullScreenModeAllScreens, /* defined from 10.5 on */
-				       nil];
-		} else /* 10.6 and later. */
-		{
-		  opts = [NSDictionary dictionaryWithObjectsAndKeys:
-					   [NSNumber numberWithBool:NO],
-				       NSFullScreenModeAllScreens, 
-				       /* let menu and Dock appear if mouse is moved there. */
-					    [NSNumber numberWithInt: (_NSApplicationPresentationAutoHideMenuBar|_NSApplicationPresentationAutoHideDock)],
-							    /* hack: avoid using constant to allow for compilation with pre-10.6 SDKs */
-				       @"NSFullScreenModeApplicationPresentationOptions", /* defined from 10.6 on */
-				       nil];
-		}
-	      
-	      [view enterFullScreenMode:[[view window] screen]
-	      		    withOptions:opts];
-	      FRAME_NS_WINDOW (f) = [view window];
-	      // causes black screen.
-	      //[[view window] setLevel:[NSNumber numberWithInt:NSNormalWindowLevel]];
+  f->border_width = [new_window frame].size.width - r.size.width;
+  FRAME_NS_TITLEBAR_HEIGHT (f) =
+    [new_window frame].size.height - r.size.height;
 
-	      fs = 1;
-	      [NSCursor setHiddenUntilMouseMoves:YES];
+  [[new_window delegate] windowDidMove:nil];
 
-	      break;
-	    default:
-	      [view exitFullScreenModeWithOptions: nil];
-	      FRAME_NS_WINDOW (f) = [view window];
-	      /* restore from fullscreen NSWindow: */
-	      [[view window] makeFirstResponder: view];
-	    }
-
-	  NSRect vr = [view frame];
-
-	  NSRect r = [[view window] frame];
-	  width = r.size.width;
-	  height = r.size.height;
-
-	  /* NS removes toolbar / titlebar for fullscreen.
-	     We need to recalculate frame geometry and 
-	     update frame parameters. */
-
-	  FRAME_NS_TITLEBAR_HEIGHT (f) = height - vr.size.height;
-
-	  if ([[[view window] toolbar] isVisible])
-	    {
-	      FRAME_EXTERNAL_TOOL_BAR (f) = 1;
-	      update_frame_tool_bar (f);
-	      x_set_frame_parameters (f, Fcons (Fcons (Qtool_bar_lines, make_number(1)),
-						Qnil));
-	    }
-	  else
-	    {
-	      if (FRAME_EXTERNAL_TOOL_BAR (f))
-		{
-		  free_frame_tool_bar (f);
-		  FRAME_EXTERNAL_TOOL_BAR (f) = 0;
-		}
-	      x_set_frame_parameters (f, Fcons (Fcons (Qtool_bar_lines, make_number(0)),
-						Qnil));
-	    }
-
-	  /* to do: save and restore previous state of tool bar */
- 
-  if (FRAME_EXTERNAL_TOOL_BAR (f))
-    {
-    
-    FRAME_NS_TOOLBAR_HEIGHT (f) =
-      /* XXX: GNUstep has not yet implemented the first method below, added
-	 in Panther, however the second is incorrect under Cocoa. */
-#ifdef NS_IMPL_COCOA
-      NSHeight ([[view window] frameRectForContentRect: NSMakeRect (0, 0, 0, 0)])
-      /* NOTE: previously this would generate wrong result if toolbar not
-               yet displayed and fixing toolbar_height=32 helped, but
-               now (200903) seems no longer needed */
-#else
-      NSHeight ([NSWindow frameRectForContentRect: NSMakeRect (0, 0, 0, 0)
-					styleMask: [[view window] styleMask]])
 #endif
-            - FRAME_NS_TITLEBAR_HEIGHT (f);
-    }
-  else
-    FRAME_NS_TOOLBAR_HEIGHT (f) = 0;
-
-
-
-	  cols = FRAME_PIXEL_WIDTH_TO_TEXT_COLS (f,
-#ifdef NS_IMPL_GNUSTEP
-						 width + 3);
-#else
-						width);
-#endif
-          if (cols < MINWIDTH)
-	    cols = MINWIDTH;
-	  rows = FRAME_PIXEL_HEIGHT_TO_TEXT_LINES (f, height
-#ifdef NS_IMPL_GNUSTEP
-					       - FRAME_NS_TITLEBAR_HEIGHT (f) + 3
-					       - FRAME_NS_TOOLBAR_HEIGHT (f));
-#else
-	  - FRAME_NS_TITLEBAR_HEIGHT (f)
-          - FRAME_NS_TOOLBAR_HEIGHT (f));
-#endif
-          if (rows < MINHEIGHT)
-	    rows = MINHEIGHT;
-
-#if 0 /* does harm and doesnt seem to be needed. */
-	  /* Handle scroll bars */
-	  set_vertical_scroll_bar (XWINDOW (f->root_window)); 
-	  if (fs)
-	    {
-	      ns_fullscreen_vertical_scrollbar_state =
-		Fframe_parameter (frame, Qvertical_scroll_bars);
-
-	      // turn off scroll bars in full screen mode
-	      // we want to hide those scroll bars for now, as they are displayed
-	      // in the wrong position, and clicks aren't processed reliably 
-	      x_set_frame_parameters (f, Fcons (Fcons (Qvertical_scroll_bars, Qnil),
-	      					Qnil));
-
-	      // we can only assume that removeFromSuperview is called
-	      // when NSView goes into fullscreen mode.
-	      // this should trigger their re-addition by the next set_vertical_scroll_bar
-	      XWINDOW (f->root_window) -> vertical_scroll_bar = Qnil;
-	    } else
-	    {
-	      if (! ns_fullscreen_vertical_scrollbar_state)
-		ns_fullscreen_vertical_scrollbar_state = Qnil;
-	      // Fixme: we don't know that they were Qright in the first place.
-	      x_set_frame_parameters (f, Fcons (Fcons (Qvertical_scroll_bars,
-						       ns_fullscreen_vertical_scrollbar_state),
-	      					Qnil));
-	    }
-#endif	    
-	  /* Fixme: after going back to normal mode, scroll bars flicker heavily
-	     Miniaturizing/de-m. removes flicker.  Why? */
-
-	  FRAME_NS_DISPLAY_INFO (f)->x_focus_frame = f;
-
-	  FRAME_PIXEL_WIDTH (f) = width;
-	  FRAME_PIXEL_HEIGHT (f) = height;
-	  if (FRAME_COLS (f) != cols || FRAME_LINES (f) != rows)
-	    {
-	      change_frame_size (f, rows, cols, 0, 0, 1);  /* pretend, delay, safe */
-	      SET_FRAME_GARBAGED (f);
-	      cancel_mouse_face (f);
-	    }
-	  x_set_window_size (f, 0, f->text_cols, f->text_lines);
-
-	  f->async_iconified = 0;
-	  f->async_visible   = 1;
-	  windows_or_buffers_changed++;
-	  SET_FRAME_GARBAGED (f);
-	  ns_raise_frame (f);
-	  ns_frame_rehighlight (f);
-	  ns_send_appdefined (-1);
-
-	  NSEnableScreenUpdates();
-
-	  UNBLOCK_INPUT;
-     }
-   }
-#endif
+    return Qnil;
 }
+
 
 /* ==========================================================================
 
@@ -4368,7 +4183,6 @@ ns_term_shutdown (int sig)
           send_appdefined = YES;
         }
     }
-
   [super sendEvent: theEvent];
 }
 
@@ -4662,10 +4476,31 @@ ns_term_shutdown (int sig)
 /* TODO: these may help w/IO switching btwn terminal and NSApp */
 - (void)applicationWillBecomeActive: (NSNotification *)notification
 {
+  /* When re-activating the application, a selected (key) frame hidden
+     with orderOut is brought to the front and made visible.  It's
+     unclear why this happens with the NS port (and not in other applications,
+     including the AppKit port). */
+
+  /* Keep hidden frames hidden.  This works OK as a workaround. */
+  if (! FRAME_VISIBLE_P (SELECTED_FRAME ()))
+    x_make_frame_invisible (SELECTED_FRAME ());
+
   //ns_app_active=YES;
 }
+- (void)applicationWillResignActive: (NSNotification *)notification
+{
+  /* Keep hidden frames hidden.  This works OK as a workaround. */
+  if (! FRAME_VISIBLE_P (SELECTED_FRAME ()))
+    x_make_frame_invisible (SELECTED_FRAME ());
+
+}
+
 - (void)applicationDidResignActive: (NSNotification *)notification
 {
+  /* Keep hidden frames hidden.  This works OK as a workaround. */
+  if (! FRAME_VISIBLE_P (SELECTED_FRAME ()))
+    x_make_frame_invisible (SELECTED_FRAME ());
+
   //ns_app_active=NO;
   ns_send_appdefined (-1);
 }
@@ -5626,9 +5461,6 @@ ns_term_shutdown (int sig)
   NSTRACE (windowWillResize);
 /*fprintf (stderr,"Window will resize: %.0f x %.0f\n",frameSize.width,frameSize.height); */
 
-  if (emacsframe->want_fullscreen & FULLSCREEN_BOTH)
-    return;
-
   cols = FRAME_PIXEL_WIDTH_TO_TEXT_COLS (emacsframe,
 #ifdef NS_IMPL_GNUSTEP
                                         frameSize.width + 3);
@@ -5698,9 +5530,6 @@ ns_term_shutdown (int sig)
   NSWindow *theWindow = [notification object];
   NSTRACE (windowDidResize);
 
-  if (emacsframe->want_fullscreen & FULLSCREEN_BOTH)
-    return;
-
 #ifdef NS_IMPL_GNUSTEP
    /* in GNUstep, at least currently, it's possible to get a didResize
       without getting a willResize.. therefore we need to act as if we got
@@ -5757,7 +5586,7 @@ ns_term_shutdown (int sig)
 
   /* frame was iconified or is not otherwise visible (to emacs)
    yet, but is being made visible*/
-  if (! FRAME_VISIBLE_P (emacsframe))
+  if (0 && ! FRAME_VISIBLE_P (emacsframe))
     {
       emacsframe->async_iconified = 0;
       emacsframe->async_visible   = 1;
@@ -5934,9 +5763,6 @@ ns_term_shutdown (int sig)
   NSScreen *screen = [win screen];
 
   NSTRACE (windowDidMove);
-
-  if (emacsframe->want_fullscreen & FULLSCREEN_BOTH)
-    return;
 
   if (!emacsframe->output_data.ns)
     return;
@@ -6371,6 +6197,63 @@ ns_term_shutdown (int sig)
 
 @implementation EmacsWindow
 
+-(EmacsWindow *)setFullscreen:(BOOL) flag {
+  BOOL isFullscreen = [[self className] isEqualToString:@"EmacsFullWindow"];
+    NSWindow *win;
+    EmacsFullWindow *f;
+    EmacsWindow *w;
+    EmacsView *view;
+
+    if (isFullscreen && ! flag) {
+        f = (EmacsFullWindow *)self;
+        w = [f getNormalWindow];
+
+        [w setContentView:[f contentView]];
+        [w makeKeyAndOrderFront:nil];
+
+        [f close];
+
+        win = w;
+
+        if ([[self screen] isEqual:[[NSScreen screens] objectAtIndex:0]]) {
+            if ([NSApp respondsToSelector:@selector(setPresentationOptions:)]) {
+                [NSApp setPresentationOptions:NSApplicationPresentationDefault];
+            }
+            else {
+                [NSMenu setMenuBarVisible:YES];
+            }
+        }
+    }
+    else if (flag && ! isFullscreen)
+      {
+        [self deminiaturize:nil];
+
+        if ([[self screen] isEqual:[[NSScreen screens] objectAtIndex:0]]) {
+            if ([NSApp respondsToSelector:@selector(setPresentationOptions:)]) {
+                [NSApp setPresentationOptions:NSApplicationPresentationAutoHideDock | NSApplicationPresentationAutoHideMenuBar];
+            }
+            else {
+                [NSMenu setMenuBarVisible:NO];
+            }
+        }
+
+        [self orderOut:nil];
+
+        f = [[EmacsFullWindow alloc] initWithNormalWindow:self];
+        view = (EmacsView *)[self delegate];
+        [f setDelegate:view];
+        [f makeFirstResponder:view];
+        [f setContentView:[self contentView]];
+        [f setContentSize:[[self screen] frame].size];
+        [f setTitle:[self title]];
+        [f makeKeyAndOrderFront:nil];
+
+        win = f;
+    }
+
+    return win;
+}
+
 /* called only on resize clicks by special case in EmacsApp-sendEvent */
 - (void)mouseDown: (NSEvent *)theEvent
 {
@@ -6428,6 +6311,32 @@ ns_term_shutdown (int sig)
 
 
 @end /* EmacsWindow */
+
+@implementation EmacsFullWindow
+
+-(BOOL)canBecomeKeyWindow {
+    return YES;
+}
+
+-(id)initWithNormalWindow:(EmacsWindow *)window {
+    self = [super initWithContentRect:[window contentRectForFrameRect:[[window screen] frame]]
+                            styleMask:NSBorderlessWindowMask
+                              backing:NSBackingStoreBuffered
+                                defer:YES];
+    if (self) {
+        normalWindow = window;
+        [self setAcceptsMouseMovedEvents: YES];
+        [self useOptimizedDrawing: YES];
+    }
+
+    return self;
+}
+
+-(EmacsWindow *)getNormalWindow {
+    return normalWindow;
+}
+
+@end /* EmacsFullWindow */
 
 
 /* ==========================================================================

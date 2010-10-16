@@ -1028,7 +1028,7 @@ frame_parm_handler ns_frame_parm_handlers[] =
   x_set_fringe_width, /* generic OK */
   x_set_fringe_width, /* generic OK */
   0, /* x_set_wait_for_wm, will ignore */
-  x_set_fullscreen,   /* generic OK */
+  x_set_fullscreen,  /* generic OK */
   x_set_font_backend, /* generic OK */
   x_set_alpha,
   0, /* x_set_sticky */  
@@ -1370,6 +1370,18 @@ FRAME nil means use the selected frame.  */)
 
   return Qnil;
 }
+
+
+DEFUN ("ns-cycle-frame", Fns_cycle_frame, Sns_cycle_frame, 0, 1, "",
+       doc: /* Select the next frame in order.
+arg nil means cycle forwards.  */)
+     (arg)
+     Lisp_Object arg;
+{
+  [NSApp _cycleWindowsReversed:(NILP(arg) ? FALSE : TRUE)];
+  return Qnil;
+}
+
 
 /* Spelling */
 
@@ -3290,7 +3302,6 @@ DEFUN ("ns-open-help-anchor", Fns_open_help_anchor, Sns_open_help_anchor, 1, 2, 
 
 #endif
 
-
 /* ==========================================================================
 
     Lisp interface declaration
@@ -3371,6 +3382,7 @@ be used as the image of the icon representing the frame.  */);
   defsubr (&Sns_perform_service);
   defsubr (&Sns_convert_utf8_nfd_to_nfc);
   defsubr (&Sx_focus_frame);
+  defsubr (&Sns_cycle_frame);
   defsubr (&Sns_popup_spellchecker_panel);
   defsubr (&Sns_close_spellchecker_panel);
   defsubr (&Sns_spellchecker_panel_visible_p);

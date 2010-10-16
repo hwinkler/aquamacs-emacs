@@ -1,3 +1,297 @@
+2010-10-03  Michael Albinus  <michael.albinus@gmx.de>
+
+	* dbusbind.c (syms_of_dbusbind): Move putenv call ...
+	(Fdbus_init_bus): ... here.  (Bug#7113)
+
+2010-10-03  Glenn Morris  <rgm@gnu.org>
+
+	* buffer.c (before-change-functions, after-change-functions):
+	Three-year overdue doc fix following 2007-08-13 change.
+
+2010-10-02  Kenichi Handa  <handa@m17n.org>
+
+	* coding.c (coding_inherit_eol_type): If parent doesn't specify
+	eol-format, inherit from the system's default.
+	(complement_process_encoding_system): Make a new coding system
+	inherit the original eol-format.
+
+2010-09-30  Kenichi Handa  <handa@m17n.org>
+
+	* coding.c (complement_process_encoding_system): New function.
+
+	* coding.h (complement_process_encoding_system): Extern it.
+
+	* callproc.c (Fcall_process): Complement the coding system for
+	encoding arguments.
+	(Fcall_process_region): Complement the coding system for encoding
+	the input to the process.
+
+	* process.c (Fstart_process): Complement the coding system for
+	encoding arguments.
+	(send_process): Complement the coding system for encoding what
+	sent to the process.
+
+2010-09-29  Kenichi Handa  <handa@m17n.org>
+
+	* xfont.c (xfont_open): Fix setting of font->average_width from
+	:avgwidth property (Bug#7123).
+
+2010-09-28  Michael Albinus  <michael.albinus@gmx.de>
+
+	* dbusbind.c (syms_of_dbusbind): Use putenv instead of setenv, it
+	is more portable.
+
+	* keyboard.c (gobble_input): Move call of xd_read_queued_messages ...
+	(kbd_buffer_get_event): ... here. This is needed for cygwin, which
+	has not defined SIGIO.
+
+2010-09-27  Michael Albinus  <michael.albinus@gmx.de>
+
+	* dbusbind.c (syms_of_dbusbind): Set $DBUS_FATAL_WARNINGS to "0".
+	(Bug#7113)
+
+2010-09-26  Jan Djärv  <jan.h.d@swipnet.se>
+
+	* xgselect.c (xg_select): Clear file descriptors not set from
+	rfds and wfds.
+
+2010-09-21  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	* syntax.c (back_comment): Detect the case where a 1-char comment
+	starter is also the 2nd char of a 2-char comment ender.
+
+2010-09-17  Jan Djärv  <jan.h.d@swipnet.se>
+
+	* gtkutil.c (xg_tool_bar_menu_proxy): Set gtk-menu-items to TRUE.
+
+2010-09-12  Jan Djärv  <jan.h.d@swipnet.se>
+
+	* xterm.c (get_current_vm_state): New function.
+	(do_ewmh_fullscreen): Call get_current_vm_state and compare with
+	want_fullscreen so set_wm_state calls are few (Bug#7013).
+	(x_handle_net_wm_state): Move code to get_current_vm_state and
+	call that function.
+
+2010-09-11  Courtney Bane  <emacs-bugs-7626@cbane.org>  (tiny change)
+
+	* term.c (tty_set_terminal_modes): Don't initialize twice (bug#7002).
+
+2010-09-08  Kenichi Handa  <handa@m17n.org>
+
+	* coding.c (encode_coding_iso_2022): Don't optimize for ASCII if
+	we may use designation or locking-shift.
+
+2010-09-07  Kenichi Handa  <handa@m17n.org>
+
+	* coding.c (detect_coding_emacs_mule): Fix checking of multibyte
+	sequence when the source is multibyte.
+
+2010-08-31  Kenichi Handa  <handa@m17n.org>
+
+	* dispextern.h (FACE_FOR_CHAR): Use an ASCII face for 8-bit
+	characters.
+
+	* term.c (encode_terminal_code): Fix the previous change.
+	(produce_glyphs): Don't set it->char_to_display here.
+	Don't handle unibyte-display-via-language-environment here.
+	(produce_special_glyphs): Set temp_it.char_to_display before
+	calling produce_glyphs.
+
+	* xdisp.c (get_next_display_element): Set it->char_to_display
+	here.  Convert all 8-bit bytes from unibyte buffer/string to 8-bit
+	characters.
+	(get_overlay_arrow_glyph_row): Set it.char_to_display too before
+	calling PRODUCE_GLYPHS.
+	(append_space_for_newline): Save and store it->char_to_display.
+	Set it->char_to_display before calling PRODUCE_GLYPHS.
+	(extend_face_to_end_of_line): Set it->char_to_display before
+	calling PRODUCE_GLYPHS.
+	(get_glyph_face_and_encoding): Set the glyph code an 8-bit
+	character to its byte value.
+	(get_char_glyph_code): New function.
+	(produce_stretch_glyph): Set it2.char_to_display too before
+	calling x_produce_glyphs.
+	(x_produce_glyphs): Simplify by using the same code for ASCII and
+	non-ASCII characters.  Don't set it->char_to_display here.
+	Don't handle unibyte-display-via-language-environment here.  For a
+	charater of no glyph, use font->space_width instead of FONT_WIDTH.
+
+2010-08-29  Kenichi Handa  <handa@m17n.org>
+
+	* term.c (encode_terminal_code): Encode byte chars to the
+	correspnding bytes.
+
+2010-08-17  Andreas Schwab  <schwab@linux-m68k.org>
+
+	* eval.c (Flet, Feval, Fapply, apply_lambda): Use SAFE_ALLOCA_LISP
+	instead of SAFE_ALLOCA.
+
+2010-08-17  Chong Yidong  <cyd@stupidchicken.com>
+
+	* eval.c (Flet, Feval, Fapply, apply_lambda): Use SAFE_ALLOCA
+	(Bug#6214).
+
+2010-08-14  Jan Djärv  <jan.h.d@swipnet.se>
+
+	* doc.c (Fsnarf_documentation): Set skip_file only if p[1] is S.
+
+2010-08-13  Jan Djärv  <jan.h.d@swipnet.se>
+
+	* doc.c (Fsnarf_documentation): Initialize skip_file before
+	build-files test.
+
+2010-08-09  Peter O'Gorman <pogma@thewrittenword.com>  (tiny change)
+
+	* s/hpux10-20.h (HAVE_TERMIOS, NO_TERMIO, ORDINARY_LINK):
+	New definitions.
+	(HAVE_TERMIO): Remove.
+
+2010-08-06  Kenichi Handa  <handa@m17n.org>
+
+	* charset.c: Include <stdlib.h>
+	(struct charset_sort_data): New struct.
+	(charset_compare): New function.
+	(Fsort_charsets): New funciton.
+	(syms_of_charset): Declare Fsort_charsets as a Lisp function.
+
+	* coding.c (decode_coding_iso_2022): Fix checking of dimension
+	number in CTEXT extended segment.
+
+2010-08-01  Juanma Barranquero  <lekktu@gmail.com>
+
+	* w32fns.c (syms_of_w32fns) <x-max-tooltip-size>: Fix typo in docstring.
+	* xfns.c (syms_of_xfns) <x-max-tooltip-size>: Reflow docstring.
+
+2010-07-30  Juanma Barranquero  <lekktu@gmail.com>
+
+	* fns.c (Fsubstring_no_properties, Fnthcdr, Ffeaturep)
+	(Fhash_table_size): Fix typos in docstrings.
+	(Fmake_hash_table): Doc fix.
+
+2010-07-28  Juanma Barranquero  <lekktu@gmail.com>
+
+	* minibuf.c (syms_of_minibuf) <read-buffer-function>:
+	Doc fix (bug#5625).
+
+2010-07-27  Ken Brown  <kbrown@cornell.edu>
+
+	* dired.c (DIRENTRY_NONEMPTY) [cygwin]: Use d_ino instead of
+	the MSDOS definition.
+
+2010-07-25  Christoph Scholtes  <cschol2112@gmail.com>
+
+	* minibuf.c (Fread_buffer): Doc fix (bug#6528).
+
+2010-07-22  Christoph Scholtes  <cschol2112@gmail.com>
+
+	* window.c (Fwindow_height): Doc fix (bug#6518).
+
+2010-07-21  Juanma Barranquero  <lekktu@gmail.com>
+
+	* buffer.c (syms_of_buffer) <fringe-indicator-alist>: Doc fix.
+
+2010-07-17  Jan Djärv  <jan.h.d@swipnet.se>
+
+	* gtkutil.c (xg_event_is_for_menubar): Also check that event window
+	is related to the menu bar (Bug#6499).
+
+2010-07-14  Jan Djärv  <jan.h.d@swipnet.se>
+
+	* xterm.h (x_menubar_window_to_frame): Second parameter is XEvent*.
+
+	* xterm.c (handle_one_xevent): Pass event to x_menubar_window_to_frame.
+
+	* xmenu.c (x_activate_menubar): Revert previous fix for Bug#6499,
+	i.e. don't put back ButtonRelease (Bug#6608).
+
+	* xfns.c (x_menubar_window_to_frame): Take XEvent as second parameter
+	instead of Window.  Call xg_event_is_for_menubar when
+	USE_GTK (Bug#6499).
+
+	* gtkutil.h (xg_event_is_for_menubar): Declare.
+
+	* gtkutil.c (xg_event_is_for_menubar): New function (Bug#6499).
+
+2010-07-14  Eli Zaretskii  <eliz@gnu.org>
+
+	* w32fns.c (x_set_foreground_color): Fix setting the cursor color
+	when it's the same as the old foreground.  (Bug#6609)
+
+2010-07-10  Chong Yidong  <cyd@stupidchicken.com>
+
+	* xfaces.c (realize_face): Garbage the frame if a face is removed
+	(Bug#6593).
+
+2010-07-05  Andreas Schwab  <schwab@linux-m68k.org>
+
+	* keyboard.c: Remove duplicate <setjmp.h>.
+	(read_key_sequence): Remove volatile qualifiers.
+
+2010-07-05  YAMAMOTO Mitsuharu  <mituharu@math.s.chiba-u.ac.jp>
+
+	* dispextern.h (FRINGE_HEIGHT_BITS): New define.
+	(struct glyph_row): New members left_fringe_offset and
+	right_fringe_offset.
+
+	* xterm.c (x_draw_fringe_bitmap): Don't clip bottom aligned bitmap
+	specially.
+	* w32term.c (w32_draw_fringe_bitmap): Likewise.
+	* nsterm.m (ns_draw_fringe_bitmap): Likewise.
+
+	* fringe.c (draw_fringe_bitmap_1): Don't clip bitmap here.
+	Take account of	bitmap offset.
+	(draw_window_fringes): Take account of window vscroll.
+	(update_window_fringes): Likewise.  Extend top-aligned top indicator
+	or bottom-aligned bottom indicator to adjacent rows if it doesn't fit
+	in one row.  Don't set redraw_fringe_bitmaps_p outside row comparison.
+	Set left_fringe_offset and right_fringe_offset (Bug#5634, Bug#6325).
+
+2010-07-04  Juanma Barranquero  <lekktu@gmail.com>
+
+	* w32fns.c (Qtooltip): Declare.
+	Suggested by Andy Moreton <andrewjmoreton@gmail.com>.
+
+2010-07-03  Jan Djärv  <jan.h.d@swipnet.se>
+
+	* xmenu.c (x_activate_menubar): Send Press/Release for Gtk+ to avoid
+	grab on just Press (Bug#6499).
+
+2010-07-02  Chong Yidong  <cyd@stupidchicken.com>
+
+	* frame.c (Qtooltip): New var.
+	(delete_frame): Use it.  Fix faulty if statement.  Don't update
+	mode line for tooltip frames.  Suggested by Martin Rudalics.
+
+	* xfns.c (x_create_tip_frame):
+	* w32fns.c (x_create_tip_frame): Use it.
+
+2010-06-30  Naohiro Aota  <naota@elisp.net>  (tiny change)
+
+	* xftfont.c (xftfont_open): Check font width one by one also when
+	spacing is dual.
+
+	* ftfont.c (ftfont_open): Ditto.
+
+2010-06-26  Andreas Schwab  <schwab@linux-m68k.org>
+
+	* alloc.c (Fmake_byte_code): Don't access undefined argument
+	(Bug#6517).
+
+2010-06-25  Chong Yidong  <cyd@stupidchicken.com>
+
+	* xdisp.c (next_element_from_image): Ensure that after-strings are
+	read the next time we hit handle_stop (Bug#1336).
+
+2010-06-23  Andreas Schwab  <schwab@linux-m68k.org>
+
+	* lread.c (read1): Signal error if #s is not followed by paren.
+
+2010-06-19  Chong Yidong  <cyd@stupidchicken.com>
+
+	* image.c (free_image): Mark frame as garbaged (Bug#6426).
+
+	* keymap.c (Fdefine_key): Doc fix (Bug#6460).
+
 2010-06-15  Glenn Morris  <rgm@gnu.org>
 
 	* editfns.c (Fbyte_to_string): Pacify compiler.
@@ -89,16 +383,16 @@
 
 	* ftfont.c (M17N_FLT_USE_NEW_FEATURE): Define it if we can use the
 	new feature of libotf and m17n-flt.
-	(ftfont_check_otf) [M17N_FLT_USE_NEW_FEATURE]: Call
-	OTF_check_features even if no specific feature is given.
+	(ftfont_check_otf) [M17N_FLT_USE_NEW_FEATURE]:
+	Call OTF_check_features even if no specific feature is given.
 	(PACK_OTF_TAG) [M17N_FLT_USE_NEW_FEATURE]: New macro.
 	(ftfont_drive_otf) [M17N_FLT_USE_NEW_FEATURE]: Handle the case
 	that OUT is NULL.  Use OTF_drive_gsub_with_log and
 	OTF_drive_gpos_with_log instead of OTF_drive_gsub and
 	OTF_drive_gpos.
 	(ftfont_try_otf) [M17N_FLT_USE_NEW_FEATURE]: New function.
-	(ftfont_shape_by_flt) [M17N_FLT_USE_NEW_FEATURE]: Setup
-	mflt_enable_new_feature and mflt_try_otf.
+	(ftfont_shape_by_flt) [M17N_FLT_USE_NEW_FEATURE]:
+	Setup mflt_enable_new_feature and mflt_try_otf.
 
 2010-04-19  Juanma Barranquero  <lekktu@gmail.com>
 

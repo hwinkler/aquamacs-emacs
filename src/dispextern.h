@@ -105,6 +105,8 @@ enum window_part
 /* Number of bits allocated to store fringe bitmap numbers.  */
 #define FRINGE_ID_BITS  16
 
+/* Number of bits allocated to store fringe bitmap height.  */
+#define FRINGE_HEIGHT_BITS 8
 
 
 /***********************************************************************
@@ -777,6 +779,12 @@ struct glyph_row
 
   /* Face of the right fringe glyph.  */
   unsigned right_fringe_face_id : FACE_ID_BITS;
+
+  /* Vertical offset of the left fringe bitmap.  */
+  signed left_fringe_offset : FRINGE_HEIGHT_BITS;
+
+  /* Vertical offset of the right fringe bitmap.  */
+  signed right_fringe_offset : FRINGE_HEIGHT_BITS;
 
   /* 1 means that we must draw the bitmaps of this row.  */
   unsigned redraw_fringe_bitmaps_p : 1;
@@ -1691,7 +1699,7 @@ struct face_cache
    This macro is only meaningful for multibyte character CHAR.  */
 
 #define FACE_FOR_CHAR(F, FACE, CHAR, POS, OBJECT)	\
-  (ASCII_CHAR_P (CHAR)					\
+  ((ASCII_CHAR_P (CHAR) || CHAR_BYTE8_P (CHAR))		\
    ? (FACE)->ascii_face->id				\
    : face_for_char ((F), (FACE), (CHAR), (POS), (OBJECT)))
 
@@ -2128,9 +2136,11 @@ struct it
      composition.  */
   struct composition_it cmp_it;
 
-  /* The character to display, possibly translated to multibyte
-     if unibyte_display_via_language_environment is set.  This
-     is set after produce_glyphs has been called.  */
+  /* The character to display, possibly translated to multibyte if
+     multibyte_p is zero or unibyte_display_via_language_environment
+     is set.  This is set after get_next_display_element has been
+     called.  If we are setting it->C directly before calling
+     PRODUCE_GLYPHS, this should be set beforehand too.  */
   int char_to_display;
 
   /* If what == IT_IMAGE, the id of the image to display.  */

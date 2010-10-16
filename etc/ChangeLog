@@ -1,3 +1,19 @@
+2010-09-21  Eric Ludlam  <zappo@gnu.org>
+
+	* srecode/java.srt: Make NAME be a prompt.
+
+2010-08-22  Alex Harsanyi  <harsanyi@mac.com>  (tiny change)
+
+	* emacs3.py: Import imp module and use it (Bug#5756).
+
+2010-07-27  Ken Brown  <kbrown@cornell.edu>
+
+	* PROBLEMS: Mention problem with Cygwin 1.5.19.
+
+2010-06-19  Ken Brown  <kbrown@cornell.edu>
+
+	* PROBLEMS: Update Cygwin GCC information.  (Bug#6458)
+
 2010-06-12  Glenn Morris  <rgm@gnu.org>
 
 	* tutorials/TUTORIAL.bg, tutorials/TUTORIAL.es: Fix typos.
