@@ -1,7 +1,7 @@
 @echo off
 rem   ----------------------------------------------------------------------
 rem   Configuration script for MS Windows operating systems
-rem   Copyright (C) 1999-2012  Free Software Foundation, Inc.
+rem   Copyright (C) 1999-2013 Free Software Foundation, Inc.
 
 rem   This file is part of GNU Emacs.
 
@@ -429,7 +429,7 @@ rem
 echo Checking whether Windows API headers are too old...
 echo #include "windows.h" >junk.c
 echo #include "usp10.h" >>junk.c
-echo test(PIMAGE_NT_HEADERS pHeader) >>junk.c
+echo void test(PIMAGE_NT_HEADERS pHeader) >>junk.c
 echo {PIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pHeader);} >>junk.c
 if (%nocygwin%) == (Y) goto chkapi1
 set cf=%usercflags%

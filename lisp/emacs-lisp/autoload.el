@@ -1,6 +1,6 @@
 ;; autoload.el --- maintain autoloads in loaddefs.el  -*- lexical-binding: t -*-
 
-;; Copyright (C) 1991-1997, 2001-2012  Free Software Foundation, Inc.
+;; Copyright (C) 1991-1997, 2001-2013 Free Software Foundation, Inc.
 
 ;; Author: Roland McGrath <roland@gnu.org>
 ;; Keywords: maint
@@ -153,7 +153,7 @@ expression, in which case we want to handle forms differently."
 		   easy-mmode-define-minor-mode define-minor-mode
 		   cl-defun defun* cl-defmacro defmacro*
                    define-overloadable-function))
-      (let* ((macrop (memq car '(defmacro defmacro*)))
+      (let* ((macrop (memq car '(defmacro cl-defmacro defmacro*)))
 	     (name (nth 1 form))
 	     (args (pcase car
                      ((or `defun `defmacro

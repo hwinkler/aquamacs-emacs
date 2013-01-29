@@ -1,5 +1,5 @@
 /* Dump Emacs in Mach-O format for use on Mac OS X.
-   Copyright (C) 2001-2012 Free Software Foundation, Inc.
+   Copyright (C) 2001-2013 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -119,7 +119,7 @@ along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /* LC_DATA_IN_CODE is not defined in mach-o/loader.h on OS X 10.7.
    But it is used if we build with "Command Line Tools for Xcode 4.5
-   (OS X Lion) - Septemper 2012".  */
+   (OS X Lion) - September 2012".  */
 #ifndef LC_DATA_IN_CODE
 #define LC_DATA_IN_CODE 0x29 /* table of non-instructions in __text */
 #endif

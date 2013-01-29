@@ -1,6 +1,7 @@
 ;;; dired-x.el --- extra Dired functionality
 
-;; Copyright (C) 1993-1994, 1997, 2001-2012 Free Software Foundation, Inc.
+;; Copyright (C) 1993-1994, 1997, 2001-2013 Free Software Foundation,
+;; Inc.
 
 ;; Author: Sebastian Kremer <sk@thp.uni-koeln.de>
 ;;	Lawrence R. Dodd <dodd@roebling.poly.edu>
@@ -1114,6 +1115,7 @@ See `dired-guess-shell-alist-user'."
     (if (null default)
         ;; Nothing to guess
         (read-shell-command prompt nil 'dired-shell-command-history)
+      (setq prompt (replace-regexp-in-string ": $" " " prompt))
       (if (listp default)
           ;; More than one guess
           (setq default-list default
@@ -1124,7 +1126,7 @@ See `dired-guess-shell-alist-user'."
         ;; Just one guess
         (setq default-list (list default)))
       ;; Put the first guess in the prompt but not in the initial value.
-      (setq prompt (concat prompt (format "[%s] " default)))
+      (setq prompt (concat prompt (format "[%s]: " default)))
       ;; All guesses can be retrieved with M-n
       (setq val (read-shell-command prompt nil
                                     'dired-shell-command-history

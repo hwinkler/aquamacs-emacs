@@ -1,6 +1,6 @@
 ;;; vc-bzr.el --- VC backend for the bzr revision control system  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2006-2012 Free Software Foundation, Inc.
+;; Copyright (C) 2006-2013 Free Software Foundation, Inc.
 
 ;; Author: Dave Love <fx@gnu.org>
 ;; 	   Riccardo Murri <riccardo.murri@gmail.com>
@@ -150,12 +150,6 @@ Use the current Bzr root directory as the ROOT argument to
 (defconst vc-bzr-admin-branchconf
   (concat vc-bzr-admin-dirname "/branch/branch.conf"))
 
-;;;###autoload (defun vc-bzr-registered (file)
-;;;###autoload   (if (vc-find-root file vc-bzr-admin-checkout-format-file)
-;;;###autoload       (progn
-;;;###autoload         (load "vc-bzr")
-;;;###autoload         (vc-bzr-registered file))))
-
 (defun vc-bzr-root (file)
   "Return the root directory of the bzr repository containing FILE."
   ;; Cache technique copied from vc-arch.el.
@@ -291,6 +285,14 @@ in the repository root directory of FILE."
          (message "Falling back on \"slow\" status detection (%S)" err)
          (vc-bzr-state file))))))
 
+;; This is a cheap approximation that is autoloaded.  If it finds a
+;; possible match it loads this file and runs the real function.
+;; It requires vc-bzr-admin-checkout-format-file to be autoloaded too.
+;;;###autoload (defun vc-bzr-registered (file)
+;;;###autoload   (if (vc-find-root file vc-bzr-admin-checkout-format-file)
+;;;###autoload       (progn
+;;;###autoload         (load "vc-bzr")
+;;;###autoload         (vc-bzr-registered file))))
 
 (defun vc-bzr-registered (file)
   "Return non-nil if FILE is registered with bzr."
@@ -618,15 +620,24 @@ or a superior directory.")
 
 (declare-function log-edit-extract-headers "log-edit" (headers string))
 
+(defun vc-bzr--sanitize-header (arg)
+  ;; Newlines in --fixes (and probably other fields as well) trigger a nasty
+  ;; Bazaar bug; see https://bugs.launchpad.net/bzr/+bug/1094180.
+  (lambda (str) (list arg
+                 (replace-regexp-in-string "\\`[ \t]+\\|[ \t]+\\'"
+                                           "" (replace-regexp-in-string
+                                               "\n[ \t]?" " " str)))))
+
 (defun vc-bzr-checkin (files rev comment)
   "Check FILES in to bzr with log message COMMENT.
 REV non-nil gets an error."
   (if rev (error "Can't check in a specific revision with bzr"))
-  (apply 'vc-bzr-command "commit" nil 0
-         files (cons "-m" (log-edit-extract-headers '(("Author" . "--author")
-						      ("Date" . "--commit-time")
-                                                      ("Fixes" . "--fixes"))
-                                                    comment))))
+  (apply 'vc-bzr-command "commit" nil 0 files
+         (cons "-m" (log-edit-extract-headers
+                     `(("Author" . ,(vc-bzr--sanitize-header "--author"))
+                       ("Date" . ,(vc-bzr--sanitize-header "--commit-time"))
+                       ("Fixes" . ,(vc-bzr--sanitize-header "--fixes")))
+                     comment))))
 
 (defun vc-bzr-find-revision (file rev buffer)
   "Fetch revision REV of file FILE and put it into BUFFER."

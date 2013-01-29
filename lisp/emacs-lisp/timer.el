@@ -1,6 +1,6 @@
 ;;; timer.el --- run a function with args at some time in future
 
-;; Copyright (C) 1996, 2001-2012  Free Software Foundation, Inc.
+;; Copyright (C) 1996, 2001-2013 Free Software Foundation, Inc.
 
 ;; Maintainer: FSF
 ;; Package: emacs
@@ -204,7 +204,7 @@ timers).  If nil, allocate a new cell."
   "Insert TIMER into `timer-idle-list'.
 This arranges to activate TIMER whenever Emacs is next idle.
 If optional argument DONT-WAIT is non-nil, set TIMER to activate
-immediately \(see beloe\), or at the right time, if Emacs is
+immediately \(see below\), or at the right time, if Emacs is
 already idle.
 
 REUSE-CELL, if non-nil, is a cons cell to reuse when inserting
@@ -307,13 +307,13 @@ This function is called, by name, directly by the C code."
 	  ;; Run handler.
 	  ;; We do this after rescheduling so that the handler function
 	  ;; can cancel its own timer successfully with cancel-timer.
-	  (condition-case nil
+	  (condition-case-unless-debug err
               ;; Timer functions should not change the current buffer.
               ;; If they do, all kinds of nasty surprises can happen,
               ;; and it can be hellish to track down their source.
               (save-current-buffer
                 (apply (timer--function timer) (timer--args timer)))
-	    (error nil))
+	    (error (message "Error in timer: %S" err)))
 	  (if retrigger
 	      (setf (timer--triggered timer) nil)))
       (error "Bogus timer event"))))
@@ -450,7 +450,7 @@ be detected.
                      (with-timeout-timers
                          (cons -with-timeout-timer- with-timeout-timers)))
                 (unwind-protect
-                    ,@body
+                    (progn ,@body)
                   (cancel-timer -with-timeout-timer-))))))
        ;; It is tempting to avoid the `if' altogether and instead run
        ;; timeout-forms in the timer, just before throwing `timeout'.

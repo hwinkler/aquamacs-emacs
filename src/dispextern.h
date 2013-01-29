@@ -1,6 +1,6 @@
 /* Interface definitions for display code.
 
-Copyright (C) 1985, 1993-1994, 1997-2012  Free Software Foundation, Inc.
+Copyright (C) 1985, 1993-1994, 1997-2013 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -317,13 +317,18 @@ struct glyph
      Lisp string, this is a position in that string.  If it is a
      buffer, this is a position in that buffer.  A value of -1
      together with a null object means glyph is a truncation glyph at
-     the start of a row.  */
+     the start of a row.  Right truncation and continuation glyphs at
+     the right edge of a row have their position set to the next
+     buffer position that is not shown on this row.  Glyphs inserted
+     by redisplay, such as the empty space after the end of a line on
+     TTYs, or the overlay-arrow on a TTY, have this set to -1.  */
   ptrdiff_t charpos;
 
-  /* Lisp object source of this glyph.  Currently either a buffer or
-     a string, if the glyph was produced from characters which came from
+  /* Lisp object source of this glyph.  Currently either a buffer or a
+     string, if the glyph was produced from characters which came from
      a buffer or a string; or 0 if the glyph was inserted by redisplay
-     for its own purposes such as padding.  */
+     for its own purposes, such as padding or truncation/continuation
+     glyphs, or the overlay-arrow glyphs on TTYs.  */
   Lisp_Object object;
 
   /* Width in pixels.  */
@@ -1576,12 +1581,12 @@ struct face
   /* Pixmap width and height.  */
   unsigned int pixmap_w, pixmap_h;
 
-  /* Non-zero means characters in this face have a box that thickness
-     around them.  If it is negative, the absolute value indicates the
-     thickness, and the horizontal lines of box (top and bottom) are
-     drawn inside of characters glyph area.  The vertical lines of box
-     (left and right) are drawn as the same way as the case that this
-     value is positive.  */
+  /* Non-zero means characters in this face have a box of that
+     thickness around them.  If this value is negative, its absolute
+     value indicates the thickness, and the horizontal (top and
+     bottom) borders of box are drawn inside of the character glyphs'
+     area.  The vertical (left and right) borders of the box are drawn
+     in the same way as when this value is positive.  */
   int box_line_width;
 
   /* Type of box drawn.  A value of FACE_NO_BOX means no box is drawn
@@ -3151,7 +3156,7 @@ int draw_window_fringes (struct window *, int);
 int update_window_fringes (struct window *, int);
 void compute_fringe_widths (struct frame *, int);
 
-#ifdef WINDOWSNT
+#ifdef HAVE_NTGUI
 void w32_init_fringe (struct redisplay_interface *);
 void w32_reset_fringes (void);
 #endif
@@ -3164,7 +3169,7 @@ extern unsigned row_hash (struct glyph_row *);
 
 extern int x_bitmap_height (struct frame *, ptrdiff_t);
 extern int x_bitmap_width (struct frame *, ptrdiff_t);
-extern int x_bitmap_pixmap (struct frame *, ptrdiff_t);
+extern ptrdiff_t x_bitmap_pixmap (struct frame *, ptrdiff_t);
 extern void x_reference_bitmap (struct frame *, ptrdiff_t);
 extern ptrdiff_t x_create_bitmap_from_data (struct frame *, char *,
 					    unsigned int, unsigned int);
@@ -3254,7 +3259,7 @@ extern char unspecified_fg[], unspecified_bg[];
 #ifdef HAVE_X_WINDOWS
 void gamma_correct (struct frame *, XColor *);
 #endif
-#ifdef WINDOWSNT
+#ifdef HAVE_NTGUI
 void gamma_correct (struct frame *, COLORREF *);
 #endif
 

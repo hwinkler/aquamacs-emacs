@@ -1,6 +1,6 @@
 ;;; cus-start.el --- define customization properties of builtins
 
-;; Copyright (C) 1997, 1999-2012 Free Software Foundation, Inc.
+;; Copyright (C) 1997, 1999-2013 Free Software Foundation, Inc.
 
 ;; Author: Per Abrahamsen <abraham@dina.kvl.dk>
 ;; Keywords: internal
@@ -51,6 +51,19 @@
 	     (gc-cons-percentage alloc float)
 	     (garbage-collection-messages alloc boolean)
 	     ;; buffer.c
+	     (cursor-type
+	      display
+	      (choice
+	       (const :tag "Frame default" t)
+	       (const :tag "Filled box" box)
+	       (const :tag "Hollow cursor" hollow)
+	       (const :tag "Vertical bar" bar)
+	       (cons  :tag "Vertical bar with specified width"
+		      (const bar) integer)
+	       (const :tag "Horizontal bar" hbar)
+	       (cons  :tag "Horizontal bar with specified width"
+		      (const hbar) integer)
+	       (const :tag "None "nil)))
 	     (mode-line-format mode-line sexp) ;Hard to do right.
 	     (major-mode internal function)
 	     (case-fold-search matching boolean)
@@ -102,12 +115,12 @@ Leaving \"Default\" unchecked is equivalent with specifying a default of
 			    (const :tag "On the right" (down . right))))
 	       (other :tag "On left, no arrows" t)))
 	     (scroll-up-aggressively windows
-				     (choice (const :tag "off" nil) number)
+				     (choice (const :tag "off" nil) float)
 				     "21.1")
 	     (scroll-down-aggressively windows
-				       (choice (const :tag "off" nil) number)
+				       (choice (const :tag "off" nil) float)
 				       "21.1")
-	     (line-spacing display (choice (const :tag "none" nil) integer)
+	     (line-spacing display (choice (const :tag "none" nil) number)
 			   "22.1")
 	     (cursor-in-non-selected-windows
 	      cursor boolean nil
@@ -452,7 +465,8 @@ since it could result in memory overflow and make Emacs crash."
 	     (message-log-max debug (choice (const :tag "Disable" nil)
 					    (integer :menu-tag "lines"
 						     :format "%v")
-					    (other :tag "Unlimited" t)))
+					    (other :tag "Unlimited" t))
+			      "24.3")
 	     (unibyte-display-via-language-environment mule boolean)
 	     (blink-cursor-alist cursor alist "22.1")
 	     (overline-margin display integer "22.1")
@@ -486,7 +500,6 @@ since it could result in memory overflow and make Emacs crash."
 	     (hourglass-delay cursor number)
 
 	     ;; xfaces.c
-	     (font-list-limit display integer)
 	     (scalable-fonts-allowed display boolean "22.1")
 	     ;; xfns.c
 	     (x-bitmap-file-path installation
@@ -500,6 +513,7 @@ since it could result in memory overflow and make Emacs crash."
 	     (x-use-underline-position-properties display boolean "22.1")
 	     (x-underline-at-descent-line display boolean "22.1")
 	     (x-stretch-cursor display boolean "21.1")
+	     (scroll-bar-adjust-thumb-portion windows boolean "24.4")
 	     ;; xselect.c
 	     (x-select-enable-clipboard-manager killing boolean "24.1")
 	     ;; xsettings.c
@@ -562,6 +576,9 @@ since it could result in memory overflow and make Emacs crash."
 			      (symbol-name symbol))
 		       ;; Any function from fontset.c will do.
 		       (fboundp 'new-fontset))
+		      ((equal "scroll-bar-adjust-thumb-portion"
+			      (symbol-name symbol))
+		       (featurep 'x))
 		      (t t))))
     (if (not (boundp symbol))
 	;; If variables are removed from C code, give an error here!

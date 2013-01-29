@@ -1,6 +1,6 @@
 ;;; icalendar.el --- iCalendar implementation -*-coding: utf-8 -*-
 
-;; Copyright (C) 2002-2012  Free Software Foundation, Inc.
+;; Copyright (C) 2002-2013 Free Software Foundation, Inc.
 
 ;; Author:         Ulf Jasper <ulf.jasper@web.de>
 ;; Created:        August 2002
@@ -186,6 +186,7 @@ the URL."
 This applies only if the UID is not empty! `%s' is replaced by
 the UID."
   :type 'string
+  :version "24.3"
   :group 'icalendar)
 
 (defcustom icalendar-import-format-status

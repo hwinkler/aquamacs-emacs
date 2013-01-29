@@ -1,5 +1,6 @@
 /* Definitions and headers for communication with NeXT/Open/GNUstep API.
-   Copyright (C) 1989, 1993, 2005, 2008-2012 Free Software Foundation, Inc.
+   Copyright (C) 1989, 1993, 2005, 2008-2013 Free Software Foundation,
+   Inc.
 
 This file is part of GNU Emacs.
 
@@ -26,9 +27,6 @@ along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
 #ifdef HAVE_NS
 
 #ifdef NS_IMPL_COCOA
-#ifndef MAC_OS_X_VERSION_10_3
-#define MAC_OS_X_VERSION_10_3 1030
-#endif
 #ifndef MAC_OS_X_VERSION_10_4
 #define MAC_OS_X_VERSION_10_4 1040
 #endif
@@ -37,6 +35,12 @@ along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
 #endif
 #ifndef MAC_OS_X_VERSION_10_6
 #define MAC_OS_X_VERSION_10_6 1060
+#endif
+#ifndef MAC_OS_X_VERSION_10_7
+#define MAC_OS_X_VERSION_10_7 1070
+#endif
+#ifndef MAC_OS_X_VERSION_10_8
+#define MAC_OS_X_VERSION_10_8 1080
 #endif
 #endif /* NS_IMPL_COCOA */
 
@@ -82,6 +86,10 @@ along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
    BOOL windowClosing;
    NSString *workingText;
    BOOL processingCompose;
+   int fs_state, fs_before_fs, next_maximized;
+   int tibar_height, tobar_height, bwidth;
+   int maximized_width, maximized_height;
+   NSWindow *nonfs_window;
 @public
    struct frame *emacsframe;
    int rows, cols;
@@ -106,6 +114,9 @@ along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
 - (EmacsToolbar *) toolbar;
 - (void) deleteWorkingText;
 - (void) updateFrameSize: (BOOL) delay;
+- (void) handleFS;
+- (void) setFSValue: (int)value;
+- (void) toggleFullScreen: (id) sender;
 
 #ifdef NS_IMPL_GNUSTEP
 /* Not declared, but useful. */
@@ -114,35 +125,24 @@ along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
 @end
 
 
+
 /* Small utility used for processing resize events under Cocoa. */
 @interface EmacsWindow : NSWindow
 {
   NSPoint grabOffset;
-  BOOL usingLionScreen;
 }
-- (BOOL) respondsToNativeFullScreen;
-- (BOOL) shouldUseNativeFullScreen;
-- (BOOL)isFullScreen;
--(EmacsWindow *)setFullscreen: (BOOL) flag;
-- (void)toggleToolbarShown: (id)sender;
-- (void)toggleFullScreen: (id)sender;
-- (void)toggleActualFullScreen: (id)sender;
-@end
-
-/* 10.5 or below is not supported [NSWindow setStyleMask:], so require content swap hack */
-@interface EmacsFullWindow : EmacsWindow {
-    EmacsWindow *normalWindow;
-}
-
--(id)initWithNormalWindow:(EmacsWindow *)window;
--(EmacsWindow *)getNormalWindow;
-
 @end
 
 // dummy for 10.5-
 #define NSApplicationPresentationDefault 0
 #define NSApplicationPresentationAutoHideDock (1 <<  0)
 #define NSApplicationPresentationAutoHideMenuBar (1 <<  2)
+
+/* Fullscreen version of the above.  */
+@interface EmacsFSWindow : EmacsWindow
+{
+}
+@end
 
 /* ==========================================================================
 
@@ -168,7 +168,7 @@ along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
 - (void)fillWithWidgetValue: (void *)wvptr;
 - (EmacsMenu *)addSubmenuWithTitle: (char *)title forFrame: (struct frame *)f;
 - (Lisp_Object)runMenuAt: (NSPoint)p forFrame: (struct frame *)f
-                 keymaps: (int)keymaps;
+                 keymaps: (bool)keymaps;
 @end
 
 
@@ -292,6 +292,14 @@ along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
 }
 @end
 
+@interface EmacsFileDelegate : NSObject
+{
+}
+- (BOOL)panel: (id)sender isValidFilename: (NSString *)filename;
+- (BOOL)panel: (id)sender shouldShowFilename: (NSString *)filename;
+- (NSString *)panel: (id)sender userEnteredFilename: (NSString *)filename
+          confirmed: (BOOL)okFlag;
+@end
 
 /* ==========================================================================
 
@@ -305,7 +313,6 @@ along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
   int refCount;
   NSBitmapImageRep *bmRep; /* used for accessing pixel data */
   unsigned char *pixmapData[5]; /* shortcut to access pixel data */
-  BOOL onTiger;
   NSColor *stippleMask;
 }
 + allocInitFromFile: (Lisp_Object)file;
@@ -374,7 +381,7 @@ along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /* ==========================================================================
 
-   Rendering on Panther and above
+   Rendering
 
    ========================================================================== */
 
@@ -400,7 +407,7 @@ extern EmacsMenu *mainMenu, *svcsMenu, *dockMenu;
 extern NSMenu *panelMenu;
 
 /* Apple removed the declaration, but kept the implementation */
-#if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_4
+#if defined (NS_IMPL_COCOA)
 @interface NSApplication (EmacsApp)
 - (void)setAppleMenu: (NSMenu *)menu;
 @end
@@ -515,10 +522,9 @@ struct nsfont_info
   float size;
 #ifdef __OBJC__
   NSFont *nsfont;
-  /* cgfont and synthItal are used only on OS X 10.3+ */
-#if defined (NS_IMPL_COCOA) && (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_3)
+#if defined (NS_IMPL_COCOA)
   CGFontRef cgfont;
-#else /* GNUstep or OS X < 10.3 */
+#else /* GNUstep */
   void *cgfont;
 #endif
 #else /* ! OBJC */
@@ -667,8 +673,7 @@ struct ns_output
 /* this dummy decl needed to support TTYs */
 struct x_output
 {
-  unsigned long background_pixel;
-  unsigned long foreground_pixel;
+  int unused;
 };
 
 
@@ -712,9 +717,9 @@ struct x_output
 #define FRAME_FONT(f) ((f)->output_data.ns->font)
 
 #ifdef __OBJC__
-#define XNS_SCROLL_BAR(vec) ((id) XSAVE_VALUE (vec)->pointer)
+#define XNS_SCROLL_BAR(vec) ((id) XSAVE_POINTER (vec, 0))
 #else
-#define XNS_SCROLL_BAR(vec) XSAVE_VALUE (vec)->pointer
+#define XNS_SCROLL_BAR(vec) XSAVE_POINTER (vec, 0)
 #endif
 
 /* Compute pixel size for vertical scroll bars */
@@ -829,7 +834,7 @@ extern void free_frame_tool_bar (FRAME_PTR f);
 extern void find_and_call_menu_selection (FRAME_PTR f,
     int menu_bar_items_used, Lisp_Object vector, void *client_data);
 extern Lisp_Object find_and_return_menu_selection (FRAME_PTR f,
-                                                   int keymaps,
+                                                   bool keymaps,
                                                    void *client_data);
 extern Lisp_Object ns_popup_dialog (Lisp_Object position, Lisp_Object contents,
                                     Lisp_Object header);

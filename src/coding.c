@@ -1,5 +1,5 @@
 /* Coding system handler (conversion, detection, etc).
-   Copyright (C) 2001-2012 Free Software Foundation, Inc.
+   Copyright (C) 2001-2013 Free Software Foundation, Inc.
    Copyright (C) 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
      2005, 2006, 2007, 2008, 2009, 2010, 2011
      National Institute of Advanced Industrial Science and Technology (AIST)
@@ -302,6 +302,7 @@ Lisp_Object Vcoding_system_hash_table;
 static Lisp_Object Qcoding_system, Qeol_type;
 static Lisp_Object Qcoding_aliases;
 Lisp_Object Qunix, Qdos;
+static Lisp_Object Qmac;
 Lisp_Object Qbuffer_file_coding_system;
 static Lisp_Object Qpost_read_conversion, Qpre_write_conversion;
 static Lisp_Object Qdefault_char;
@@ -342,6 +343,10 @@ Lisp_Object Qcoding_system_p, Qcoding_system_error;
    end-of-line format.  */
 Lisp_Object Qemacs_mule, Qraw_text;
 Lisp_Object Qutf_8_emacs;
+
+#if defined (WINDOWSNT) || defined (CYGWIN)
+static Lisp_Object Qutf_16le;
+#endif
 
 /* Coding-systems are handed between Emacs Lisp programs and C internal
    routines by the following three variables.  */
@@ -415,7 +420,7 @@ enum iso_code_class_type
     ISO_shift_out,		/* ISO_CODE_SO (0x0E) */
     ISO_shift_in,		/* ISO_CODE_SI (0x0F) */
     ISO_single_shift_2_7,	/* ISO_CODE_SS2_7 (0x19) */
-    ISO_escape,			/* ISO_CODE_SO (0x1B) */
+    ISO_escape,			/* ISO_CODE_ESC (0x1B) */
     ISO_control_1,		/* Control codes in the range
 				   0x80..0x9F, except for the
 				   following 3 codes.  */
@@ -1044,14 +1049,7 @@ coding_alloc_by_making_gap (struct coding_system *coding,
       GPT -= gap_head_used, GPT_BYTE -= gap_head_used;
     }
   else
-    {
-      Lisp_Object this_buffer;
-
-      this_buffer = Fcurrent_buffer ();
-      set_buffer_internal (XBUFFER (coding->dst_object));
-      make_gap (bytes);
-      set_buffer_internal (XBUFFER (this_buffer));
-    }
+    make_gap_1 (XBUFFER (coding->dst_object), bytes);
 }
 
 
@@ -3059,20 +3057,7 @@ detect_coding_iso_2022 (struct coding_system *coding,
 	    }
 	  if (single_shifting)
 	    break;
-	check_extra_latin:
-	  if (! VECTORP (Vlatin_extra_code_table)
-	      || NILP (AREF (Vlatin_extra_code_table, c)))
-	    {
-	      rejected = CATEGORY_MASK_ISO;
-	      break;
-	    }
-	  if (CODING_ISO_FLAGS (&coding_categories[coding_category_iso_8_1])
-	      & CODING_ISO_FLAG_LATIN_EXTRA)
-	    found |= CATEGORY_MASK_ISO_8_1;
-	  else
-	    rejected |= CATEGORY_MASK_ISO_8_1;
-	  rejected |= CATEGORY_MASK_ISO_8_2;
-	  break;
+	  goto check_extra_latin;
 
 	default:
 	  if (c < 0)
@@ -3123,6 +3108,20 @@ detect_coding_iso_2022 (struct coding_system *coding,
 		}
 	      break;
 	    }
+	check_extra_latin:
+	  if (! VECTORP (Vlatin_extra_code_table)
+	      || NILP (AREF (Vlatin_extra_code_table, c)))
+	    {
+	      rejected = CATEGORY_MASK_ISO;
+	      break;
+	    }
+	  if (CODING_ISO_FLAGS (&coding_categories[coding_category_iso_8_1])
+	      & CODING_ISO_FLAG_LATIN_EXTRA)
+	    found |= CATEGORY_MASK_ISO_8_1;
+	  else
+	    rejected |= CATEGORY_MASK_ISO_8_1;
+	  rejected |= CATEGORY_MASK_ISO_8_2;
+	  break;
 	}
     }
   detect_info->rejected |= CATEGORY_MASK_ISO;
@@ -5059,6 +5058,7 @@ decode_coding_ccl (struct coding_system *coding)
   while (1)
     {
       const unsigned char *p = src;
+      ptrdiff_t offset;
       int i = 0;
 
       if (multibytep)
@@ -5076,8 +5076,17 @@ decode_coding_ccl (struct coding_system *coding)
 
       if (p == src_end && coding->mode & CODING_MODE_LAST_BLOCK)
 	ccl->last_block = 1;
+      /* As ccl_driver calls DECODE_CHAR, buffer may be relocated.  */
+      charset_map_loaded = 0;
       ccl_driver (ccl, source_charbuf, charbuf, i, charbuf_end - charbuf,
 		  charset_list);
+      if (charset_map_loaded
+	  && (offset = coding_change_source (coding)))
+	{
+	  p += offset;
+	  src += offset;
+	  src_end += offset;
+	}
       charbuf += ccl->produced;
       if (multibytep)
 	src += source_byteidx[ccl->consumed];
@@ -5130,8 +5139,15 @@ encode_coding_ccl (struct coding_system *coding)
 
   do
     {
+      ptrdiff_t offset;
+
+      /* As ccl_driver calls DECODE_CHAR, buffer may be relocated.  */
+      charset_map_loaded = 0;
       ccl_driver (ccl, charbuf, destination_charbuf,
 		  charbuf_end - charbuf, 1024, charset_list);
+      if (charset_map_loaded
+	  && (offset = coding_change_destination (coding)))
+	dst += offset;
       if (multibytep)
 	{
 	  ASSURE_DESTINATION (ccl->produced * 2);
@@ -6284,6 +6300,9 @@ detect_coding (struct coding_system *coding)
 		{
 		  category = coding_priorities[i];
 		  this = coding_categories + category;
+		  /* Some of this->detector (e.g. detect_coding_sjis)
+		     require this information.  */
+		  coding->id = this->id;
 		  if (this->id < 0)
 		    {
 		      /* No coding system of this category is defined.  */
@@ -6805,7 +6824,7 @@ produce_chars (struct coding_system *coding, Lisp_Object translation_table,
      [ -LENGTH ANNOTATION_MASK NCHARS NBYTES METHOD [ COMPONENTS... ] ]
  */
 
-static inline void
+static void
 produce_composition (struct coding_system *coding, int *charbuf, ptrdiff_t pos)
 {
   int len;
@@ -6849,7 +6868,7 @@ produce_composition (struct coding_system *coding, int *charbuf, ptrdiff_t pos)
      [ -LENGTH ANNOTATION_MASK NCHARS CHARSET-ID ]
  */
 
-static inline void
+static void
 produce_charset (struct coding_system *coding, int *charbuf, ptrdiff_t pos)
 {
   ptrdiff_t from = pos - charbuf[2];
@@ -7084,7 +7103,7 @@ decode_coding (struct coding_system *coding)
    position of a composition after POS (if any) or to LIMIT, and
    return BUF.  */
 
-static inline int *
+static int *
 handle_composition_annotation (ptrdiff_t pos, ptrdiff_t limit,
 			       struct coding_system *coding, int *buf,
 			       ptrdiff_t *stop)
@@ -7167,7 +7186,7 @@ handle_composition_annotation (ptrdiff_t pos, ptrdiff_t limit,
    If the property value is nil, set *STOP to the position where the
    property value is non-nil (limiting by LIMIT), and return BUF.  */
 
-static inline int *
+static int *
 handle_charset_annotation (ptrdiff_t pos, ptrdiff_t limit,
 			   struct coding_system *coding, int *buf,
 			   ptrdiff_t *stop)
@@ -7951,6 +7970,40 @@ preferred_coding_system (void)
   return CODING_ID_NAME (id);
 }
 
+#if defined (WINDOWSNT) || defined (CYGWIN)
+
+Lisp_Object
+from_unicode (Lisp_Object str)
+{
+  CHECK_STRING (str);
+  if (!STRING_MULTIBYTE (str) &&
+      SBYTES (str) & 1)
+    {
+      str = Fsubstring (str, make_number (0), make_number (-1));
+    }
+
+  return code_convert_string_norecord (str, Qutf_16le, 0);
+}
+
+wchar_t *
+to_unicode (Lisp_Object str, Lisp_Object *buf)
+{
+  *buf = code_convert_string_norecord (str, Qutf_16le, 1);
+  /* We need to make a another copy (in addition to the one made by
+     code_convert_string_norecord) to ensure that the final string is
+     _doubly_ zero terminated --- that is, that the string is
+     terminated by two zero bytes and one utf-16le null character.
+     Because strings are already terminated with a single zero byte,
+     we just add one additional zero. */
+  str = make_uninit_string (SBYTES (*buf) + 1);
+  memcpy (SDATA (str), SDATA (*buf), SBYTES (*buf));
+  SDATA (str) [SBYTES (*buf)] = '\0';
+  *buf = str;
+  return WCSDATA (*buf);
+}
+
+#endif /* WINDOWSNT || CYGWIN */
+
 
 #ifdef emacs
 /*** 8. Emacs Lisp library functions ***/
@@ -8368,9 +8421,6 @@ highest priority.  */)
   ptrdiff_t from, to;
   ptrdiff_t from_byte, to_byte;
 
-  CHECK_NUMBER_COERCE_MARKER (start);
-  CHECK_NUMBER_COERCE_MARKER (end);
-
   validate_region (&start, &end);
   from = XINT (start), to = XINT (end);
   from_byte = CHAR_TO_BYTE (from);
@@ -8412,7 +8462,7 @@ highest priority.  */)
 }
 
 
-static inline bool
+static bool
 char_encodable_p (int c, Lisp_Object attrs)
 {
   Lisp_Object tail;
@@ -8814,8 +8864,6 @@ code_convert_region (Lisp_Object start, Lisp_Object end,
   ptrdiff_t from, from_byte, to, to_byte;
   Lisp_Object src_object;
 
-  CHECK_NUMBER_COERCE_MARKER (start);
-  CHECK_NUMBER_COERCE_MARKER (end);
   if (NILP (coding_system))
     coding_system = Qno_conversion;
   else
@@ -10250,6 +10298,7 @@ syms_of_coding (void)
   DEFSYM (Qeol_type, "eol-type");
   DEFSYM (Qunix, "unix");
   DEFSYM (Qdos, "dos");
+  DEFSYM (Qmac, "mac");
 
   DEFSYM (Qbuffer_file_coding_system, "buffer-file-coding-system");
   DEFSYM (Qpost_read_conversion, "post-read-conversion");
@@ -10263,6 +10312,11 @@ syms_of_coding (void)
 
   DEFSYM (Qutf_8, "utf-8");
   DEFSYM (Qutf_8_emacs, "utf-8-emacs");
+
+#if defined (WINDOWSNT) || defined (CYGWIN)
+  /* No, not utf-16-le: that one has a BOM.  */
+  DEFSYM (Qutf_16le, "utf-16le");
+#endif
 
   DEFSYM (Qutf_16, "utf-16");
   DEFSYM (Qbig, "big");

@@ -1,6 +1,6 @@
 ;;; image-dired.el --- use dired to browse and manipulate your images
 ;;
-;; Copyright (C) 2005-2012 Free Software Foundation, Inc.
+;; Copyright (C) 2005-2013 Free Software Foundation, Inc.
 ;;
 ;; Version: 0.4.11
 ;; Keywords: multimedia
@@ -2453,6 +2453,8 @@ when using per-directory thumbnail file storage"))
 
 (defvar image-dired-widget-list nil
   "List to keep track of meta data in edit buffer.")
+
+(declare-function widget-forward "wid-edit" (arg))
 
 ;;;###autoload
 (defun image-dired-dired-edit-comment-and-tags ()

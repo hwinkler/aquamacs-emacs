@@ -1,6 +1,6 @@
 ;;; newst-treeview.el --- Treeview frontend for newsticker.
 
-;; Copyright (C) 2008-2012 Free Software Foundation, Inc.
+;; Copyright (C) 2008-2013 Free Software Foundation, Inc.
 
 ;; Author:      Ulf Jasper <ulf.jasper@web.de>
 ;; Filename:    newst-treeview.el
@@ -1722,7 +1722,7 @@ return a nested list."
 
 (defun newsticker-group-move-feed (name group-name &optional no-update)
   "Move feed NAME to group GROUP-NAME.
-Update teeview afterwards unless NO-UPDATE is non-nil."
+Update treeview afterwards unless NO-UPDATE is non-nil."
   (interactive
    (let ((completion-ignore-case t))
      (list (completing-read "Feed Name: "

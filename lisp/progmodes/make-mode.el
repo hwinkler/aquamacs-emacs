@@ -1,6 +1,6 @@
 ;;; make-mode.el --- makefile editing commands for Emacs -*- lexical-binding:t -*-
 
-;; Copyright (C) 1992, 1994, 1999-2012  Free Software Foundation, Inc.
+;; Copyright (C) 1992, 1994, 1999-2013 Free Software Foundation, Inc.
 
 ;; Author: Thomas Neumann <tom@smart.bo.open.de>
 ;;	Eric S. Raymond <esr@snark.thyrsus.com>
@@ -879,41 +879,42 @@ Makefile mode can be configured by modifying the following variables:
   (make-local-variable 'makefile-need-macro-pickup)
 
   ;; Font lock.
-  (set (make-local-variable 'font-lock-defaults)
-       ;; SYNTAX-BEGIN set to backward-paragraph to avoid slow-down
-       ;; near the end of a large buffer, due to parse-partial-sexp's
-       ;; trying to parse all the way till the beginning of buffer.
-       '(makefile-font-lock-keywords
-         nil nil
-         ((?$ . "."))
-         backward-paragraph))
-  (set (make-local-variable 'syntax-propertize-function)
-       makefile-syntax-propertize-function)
+  (setq-local font-lock-defaults
+	      ;; Set SYNTAX-BEGIN to backward-paragraph to avoid
+	      ;; slow-down near the end of a large buffer, due to
+	      ;; `parse-partial-sexp' trying to parse all the way till
+	      ;; the beginning of buffer.
+	      '(makefile-font-lock-keywords
+		nil nil
+		((?$ . "."))
+		backward-paragraph))
+  (setq-local syntax-propertize-function
+	      makefile-syntax-propertize-function)
 
   ;; Add-log.
-  (set (make-local-variable 'add-log-current-defun-function)
-       'makefile-add-log-defun)
+  (setq-local add-log-current-defun-function
+	      'makefile-add-log-defun)
 
   ;; Imenu.
-  (set (make-local-variable 'imenu-generic-expression)
-       makefile-imenu-generic-expression)
+  (setq-local imenu-generic-expression
+	      makefile-imenu-generic-expression)
 
   ;; Dabbrev.
-  (set (make-local-variable 'dabbrev-abbrev-skip-leading-regexp) "\\$")
+  (setq-local dabbrev-abbrev-skip-leading-regexp "\\$")
 
   ;; Other abbrevs.
   (setq local-abbrev-table makefile-mode-abbrev-table)
 
   ;; Filling.
-  (set (make-local-variable 'fill-paragraph-function) 'makefile-fill-paragraph)
+  (setq-local fill-paragraph-function 'makefile-fill-paragraph)
 
   ;; Comment stuff.
-  (set (make-local-variable 'comment-start) "#")
-  (set (make-local-variable 'comment-end) "")
-  (set (make-local-variable 'comment-start-skip) "#+[ \t]*")
+  (setq-local comment-start "#")
+  (setq-local comment-end "")
+  (setq-local comment-start-skip "#+[ \t]*")
 
   ;; Make sure TAB really inserts \t.
-  (set (make-local-variable 'indent-line-function) 'indent-to-left-margin)
+  (setq-local indent-line-function 'indent-to-left-margin)
 
   ;; Real TABs are important in makefiles
   (setq indent-tabs-mode t))
@@ -934,8 +935,7 @@ Makefile mode can be configured by modifying the following variables:
 ;;;###autoload
 (define-derived-mode makefile-makepp-mode makefile-mode "Makeppfile"
   "An adapted `makefile-mode' that knows about makepp."
-  (set (make-local-variable 'makefile-rule-action-regex)
-       makefile-makepp-rule-action-regex)
+  (setq-local makefile-rule-action-regex makefile-makepp-rule-action-regex)
   (setq font-lock-defaults
 	`(makefile-makepp-font-lock-keywords ,@(cdr font-lock-defaults))
 	imenu-generic-expression
@@ -945,11 +945,9 @@ Makefile mode can be configured by modifying the following variables:
 ;;;###autoload
 (define-derived-mode makefile-bsdmake-mode makefile-mode "BSDmakefile"
   "An adapted `makefile-mode' that knows about BSD make."
-  (set (make-local-variable 'makefile-dependency-regex)
-       makefile-bsdmake-dependency-regex)
-  (set (make-local-variable 'makefile-dependency-skip) "^:!")
-  (set (make-local-variable 'makefile-rule-action-regex)
-       makefile-bsdmake-rule-action-regex)
+  (setq-local makefile-dependency-regex makefile-bsdmake-dependency-regex)
+  (setq-local makefile-dependency-skip "^:!")
+  (setq-local makefile-rule-action-regex makefile-bsdmake-rule-action-regex)
   (setq font-lock-defaults
 	`(makefile-bsdmake-font-lock-keywords ,@(cdr font-lock-defaults))))
 
@@ -957,7 +955,7 @@ Makefile mode can be configured by modifying the following variables:
 (define-derived-mode makefile-imake-mode makefile-mode "Imakefile"
   "An adapted `makefile-mode' that knows about imake."
   :syntax-table makefile-imake-mode-syntax-table
-  (set (make-local-variable 'syntax-propertize-function) nil)
+  (setq-local syntax-propertize-function nil)
   (setq font-lock-defaults
         `(makefile-imake-font-lock-keywords ,@(cdr font-lock-defaults))))
 
@@ -1275,9 +1273,9 @@ definition and conveniently use this command."
 
 ;; Filling
 
-(defun makefile-fill-paragraph (_arg)
-  ;; Fill comments, backslashed lines, and variable definitions
-  ;; specially.
+(defun makefile-fill-paragraph (_justify)
+  "Function used for `fill-paragraph-function' in Makefile mode.
+Fill comments, backslashed lines, and variable definitions specially."
   (save-excursion
     (beginning-of-line)
     (cond
@@ -1297,7 +1295,9 @@ definition and conveniently use this command."
 	       (end-of-line 0)
 	       (while (= (preceding-char) ?\\)
 		 (end-of-line 0))
-	       (forward-char)
+	       ;; Maybe we hit bobp, in which case we are not at EOL.
+	       (if (eq (point) (line-end-position))
+		   (forward-char))
 	       (point)))
 	    (end
 	     (save-excursion
@@ -1501,8 +1501,8 @@ Insertion takes place at point."
 	(pop-to-buffer browser-buffer)
 	(makefile-browser-fill targets macros)
 	(shrink-window-if-larger-than-buffer)
-	(set (make-local-variable 'makefile-browser-selection-vector)
-	     (make-vector (+ (length targets) (length macros)) nil))
+	(setq-local makefile-browser-selection-vector
+		    (make-vector (+ (length targets) (length macros)) nil))
 	(makefile-browser-start-interaction))))
 
 (defun makefile-switch-to-browser ()

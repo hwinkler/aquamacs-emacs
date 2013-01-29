@@ -1,6 +1,6 @@
 ;;; cperl-mode.el --- Perl code editing commands for Emacs
 
-;; Copyright (C) 1985-1987, 1991-2012  Free Software Foundation, Inc.
+;; Copyright (C) 1985-1987, 1991-2013 Free Software Foundation, Inc.
 
 ;; Author: Ilya Zakharevich
 ;;	Bob Olson
@@ -1742,6 +1742,13 @@ or as help on variables `cperl-tips', `cperl-problems',
   (setq outline-regexp cperl-outline-regexp)
   (make-local-variable 'outline-level)
   (setq outline-level 'cperl-outline-level)
+  (make-local-variable 'add-log-current-defun-function)
+  (setq add-log-current-defun-function
+	(lambda ()
+	  (save-excursion
+	    (if (re-search-backward "^sub[ \t]+\\([^({ \t\n]+\\)" nil t)
+		(match-string-no-properties 1)))))
+
   (make-local-variable 'paragraph-start)
   (setq paragraph-start (concat "^$\\|" page-delimiter))
   (make-local-variable 'paragraph-separate)
@@ -3113,8 +3120,10 @@ and closing parentheses and brackets."
 	 ((eq 'continuation (elt i 0))
 	  ;; [continuation statement-start char-after is-block is-brace]
 	  (goto-char (elt i 1))		; statement-start
-	  (+ (if (memq (elt i 2) (append "}])" nil)) ; char-after
-		 0			; Closing parenth
+	  (+ (if (or (memq (elt i 2) (append "}])" nil)) ; char-after
+                     (eq 'continuation ; do not stagger continuations
+                         (elt (cperl-sniff-for-indent parse-data) 0)))
+		 0 ; Closing parenth or continuation of a continuation
 	       cperl-continued-statement-offset)
 	     (if (or (elt i 3)		; is-block
 		     (not (elt i 4))		; is-brace

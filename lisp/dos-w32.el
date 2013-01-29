@@ -1,6 +1,6 @@
 ;; dos-w32.el --- Functions shared among MS-DOS and W32 (NT/95) platforms
 
-;; Copyright (C) 1996, 2001-2012 Free Software Foundation, Inc.
+;; Copyright (C) 1996, 2001-2013 Free Software Foundation, Inc.
 
 ;; Maintainer: Geoff Voelker <voelker@cs.washington.edu>
 ;; Keywords: internal
@@ -210,7 +210,7 @@ set to the appropriate coding system, and the value of
 		     (untranslated-file-p (buffer-file-name))))
 	(setq coding (coding-system-change-eol-conversion coding 0))
 	(setq buffer-file-coding-system coding))
-      (setq buffer-file-type (eq buffer-file-coding-system 'no-conversion)))))
+      nil)))
 
 ;;; To set the default coding system on new files.
 (add-hook 'find-file-not-found-functions

@@ -1,6 +1,6 @@
 /* Font back-end driver for the NeXT/Open/GNUstep and MacOSX window system.
    See font.h
-   Copyright (C) 2006-2012 Free Software Foundation, Inc.
+   Copyright (C) 2006-2013 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -44,14 +44,17 @@ Author: Adrian Robert (arobert@cogsci.ucsd.edu)
 #endif
 
 #define NSFONT_TRACE 0
+#define LCD_SMOOTHING_MARGIN 2
 
 extern Lisp_Object Qns;
-extern Lisp_Object Qnormal, Qbold, Qitalic, Qcondensed, Qexpanded;
+extern Lisp_Object Qnormal, Qbold, Qitalic;
 static Lisp_Object Qapple, Qroman, Qmedium;
+static Lisp_Object Qcondensed, Qexpanded;
 extern Lisp_Object Qappend;
 extern float ns_antialias_threshold;
 extern int ns_tmp_flags;
 extern struct nsfont_info *ns_tmp_font;
+
 
 /* font glyph and metrics caching functions, implemented at end */
 static void ns_uni_to_glyphs (struct nsfont_info *font_info,
@@ -72,10 +75,9 @@ static void ns_glyph_metrics (struct nsfont_info *font_info,
 static void
 ns_escape_name (char *name)
 {
-  int i =0, len =strlen (name);
-  for ( ; i<len; i++)
-    if (name[i] == ' ')
-      name[i] = '_';
+  for (; *name; name++)
+    if (*name == ' ')
+      *name = '_';
 }
 
 
@@ -83,10 +85,9 @@ ns_escape_name (char *name)
 static void
 ns_unescape_name (char *name)
 {
-  int i =0, len =strlen (name);
-  for ( ; i<len; i++)
-    if (name[i] == '_')
-      name[i] = ' ';
+  for (; *name; name++)
+    if (*name == '_')
+      *name = ' ';
 }
 
 
@@ -200,8 +201,8 @@ ns_descriptor_to_entity (NSFontDescriptor *desc,
 		    make_number (100 + 100
 			 * ns_attribute_fvalue (desc, NSFontSlantTrait)));*/
     FONT_SET_STYLE (font_entity, FONT_WIDTH_INDEX,
-		    traits & NSFontCondensedTrait ? Qcondensed :
-		    traits & NSFontExpandedTrait ? Qexpanded : Qnormal);
+                    traits & NSFontCondensedTrait ? Qcondensed :
+                    traits & NSFontExpandedTrait ? Qexpanded : Qnormal);
 /*    FONT_SET_STYLE (font_entity, FONT_WIDTH_INDEX,
 		    make_number (100 + 100
 			 * ns_attribute_fvalue (desc, NSFontWidthTrait)));*/
@@ -361,7 +362,7 @@ static NSString
     while CONSP (rts)
       {
         r = XCAR (XCAR (rts));
-        if (!strncmp(SSDATA(r), reg, strlen(SSDATA(r))))
+        if (!strncmp (SSDATA (r), reg, SBYTES (r)))
           {
             script = XCDR (XCAR (rts));
             return [NSString stringWithUTF8String: SSDATA (SYMBOL_NAME (script))];
@@ -544,6 +545,7 @@ ns_findfonts (Lisp_Object font_spec, BOOL isMatch)
     NSSet *cFamilies;
     BOOL foundItal = NO;
 
+    block_input ();
     if (NSFONT_TRACE)
       {
 	fprintf (stderr, "nsfont: %s for fontspec:\n    ",
@@ -559,6 +561,7 @@ ns_findfonts (Lisp_Object font_spec, BOOL isMatch)
 	[fkeys removeObject: NSFontFamilyAttribute];
 
     matchingDescs = [fdesc matchingFontDescriptorsWithMandatoryKeys: fkeys];
+
     if (NSFONT_TRACE)
 	NSLog(@"Got desc %@ and found %d matching fonts from it: ", fdesc,
 	      [matchingDescs count]);
@@ -591,6 +594,8 @@ ns_findfonts (Lisp_Object font_spec, BOOL isMatch)
 					 "synthItal"), list);
         [s1 release];
       }
+
+    unblock_input ();
 
     /* Return something if was a match and nothing found. */
     if (isMatch)
@@ -695,10 +700,12 @@ static Lisp_Object
 nsfont_list_family (Lisp_Object frame)
 {
   Lisp_Object list = Qnil;
-  NSEnumerator *families =
-    [[[NSFontManager sharedFontManager] availableFontFamilies]
-      objectEnumerator];
+  NSEnumerator *families;
   NSString *family;
+
+  block_input ();
+  families = [[[NSFontManager sharedFontManager] availableFontFamilies]
+               objectEnumerator];
   while ((family = [families nextObject]))
       list = Fcons (intern ([family UTF8String]), list);
   /* FIXME: escape the name? */
@@ -707,6 +714,7 @@ nsfont_list_family (Lisp_Object frame)
     fprintf (stderr, "nsfont: list families returning %"pI"d entries\n",
 	     XINT (Flength (list)));
 
+  unblock_input ();
   return list;
 }
 
@@ -728,16 +736,8 @@ nsfont_open (FRAME_PTR f, Lisp_Object font_entity, int pixel_size)
   NSRect brect;
   Lisp_Object font_object;
   int fixLeopardBug;
-  static NSMutableDictionary *fontCache = nil;
-  NSNumber *cached;
 
-  /* 2008/03/08: The same font may end up being requested for different
-     entities, due to small differences in numeric values or other issues,
-     or for different copies of the same entity.  Therefore we cache to
-     avoid creating multiple struct font objects (with metrics cache, etc.)
-     for the same NSFont object. */
-  if (fontCache == nil)
-    fontCache = [[NSMutableDictionary alloc] init];
+  block_input ();
 
   if (NSFONT_TRACE)
     {
@@ -793,38 +793,27 @@ nsfont_open (FRAME_PTR f, Lisp_Object font_entity, int pixel_size)
   if (NSFONT_TRACE)
     NSLog (@"%@\n", nsfont);
 
-  /* Check the cache */
-  cached = [fontCache objectForKey: nsfont];
-  if (cached != nil && !synthItal)
-    {
-      if (NSFONT_TRACE)
-        fprintf(stderr, "*** nsfont_open CACHE HIT!\n");
-      /* FIXME: Cast from (unsigned long) to Lisp_Object. */
-      XHASH (font_object) = [cached unsignedLongValue];
-      return font_object;
-    }
-  else
-    {
-      font_object = font_make_object (VECSIZE (struct nsfont_info),
-                                      font_entity, pixel_size);
-      if (!synthItal)
-        [fontCache setObject: [NSNumber numberWithUnsignedLong:
-					  (unsigned long) XHASH (font_object)]
-		      forKey: nsfont];
-    }
-
+  font_object = font_make_object (VECSIZE (struct nsfont_info),
+                                  font_entity, pixel_size);
   font_info = (struct nsfont_info *) XFONT_OBJECT (font_object);
   font = (struct font *) font_info;
   if (!font)
-    return Qnil; /* FIXME: other terms do, but return Qnil causes segfault */
+    {
+      unblock_input ();
+      return Qnil; /* FIXME: other terms do, but return Qnil causes segfault */
+    }
 
   font_info->glyphs = xzalloc (0x100 * sizeof *font_info->glyphs);
   font_info->metrics = xzalloc (0x100 * sizeof *font_info->metrics);
 
-  block_input ();
-
   /* for metrics */
+#ifdef NS_IMPL_COCOA
+  sfont = [nsfont screenFontWithRenderingMode:
+                    NSFontAntialiasedIntegerAdvancementsRenderingMode];
+#else
   sfont = [nsfont screenFont];
+#endif
+
   if (sfont == nil)
     sfont = nsfont;
 
@@ -1092,6 +1081,7 @@ nsfont_draw (struct glyph_string *s, int from, int to, int x, int y,
   char isComposite = s->first_glyph->type == COMPOSITE_GLYPH;
   int end = isComposite ? s->cmp_to : s->nchars;
 
+  block_input ();
   /* Select face based on input flags */
   switch (ns_tmp_flags)
     {
@@ -1316,6 +1306,7 @@ nsfont_draw (struct glyph_string *s, int from, int to, int x, int y,
   /* Draw underline, overline, strike-through. */
   ns_draw_text_decoration (s, face, col, r.size.width, r.origin.x);
 
+  unblock_input ();
   return to-from;
 }
 
@@ -1427,7 +1418,12 @@ ns_glyph_metrics (struct nsfont_info *font_info, unsigned char block)
 #endif
 
   block_input ();
- sfont = [font_info->nsfont screenFont];
+#ifdef NS_IMPL_COCOA
+  sfont = [font_info->nsfont screenFontWithRenderingMode:
+                      NSFontAntialiasedIntegerAdvancementsRenderingMode];
+#else
+  sfont = [font_info->nsfont screenFont];
+#endif
 
   font_info->metrics[block] = xzalloc (0x100 * sizeof (struct font_metrics));
   if (!(font_info->metrics[block]))
@@ -1444,11 +1440,12 @@ ns_glyph_metrics (struct nsfont_info *font_info, unsigned char block)
 
       lb = r.origin.x;
       rb = r.size.width - w;
+      // Add to bearing for LCD smoothing.  We don't know if it is there.
       if (lb < 0)
-        metrics->lbearing = round (lb);
+        metrics->lbearing = round (lb - LCD_SMOOTHING_MARGIN);
       if (font_info->ital)
         rb += 0.22 * font_info->height;
-      metrics->rbearing = lrint (w + rb);
+      metrics->rbearing = lrint (w + rb + LCD_SMOOTHING_MARGIN);
 
       metrics->descent = r.origin.y < 0 ? -r.origin.y : 0;
  /*lrint (hshrink * [sfont ascender] + expand * hd/2); */
@@ -1550,6 +1547,8 @@ syms_of_nsfont (void)
 {
   nsfont_driver.type = Qns;
   register_font_driver (&nsfont_driver, NULL);
+  DEFSYM (Qcondensed, "condensed");
+  DEFSYM (Qexpanded, "expanded");
   DEFSYM (Qapple, "apple");
   DEFSYM (Qroman, "roman");
   DEFSYM (Qmedium, "medium");

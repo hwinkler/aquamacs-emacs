@@ -1,7 +1,7 @@
 /* conf_post.h --- configure.ac includes this via AH_BOTTOM
 
-Copyright (C) 1988, 1993-1994, 1999-2002, 2004-2012
-  Free Software Foundation, Inc.
+Copyright (C) 1988, 1993-1994, 1999-2002, 2004-2013 Free Software
+Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -38,6 +38,10 @@ along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
 #if ! HAVE_ALLOCA
 # error "alloca not available on this machine"
 #endif
+#endif
+
+#ifndef __has_attribute
+# define __has_attribute(a) 0 /* non-clang */
 #endif
 
 /* This silences a few compilation warnings on FreeBSD.  */
@@ -110,7 +114,16 @@ You lose; /* Emacs for DOS must be compiled with DJGPP */
 #else
 # define lstat stat
 #endif
+/* The "portable" definition of _GL_INLINE on config.h does not work
+   with DJGPP GCC 3.4.4: it causes unresolved externals in sysdep.c,
+   although lib/execinfo.h is included and the inline functions there
+   are visible.  */
+#if __GNUC__ < 4
+# define _GL_EXECINFO_INLINE inline
+#endif
 /* End of gnulib-related stuff.  */
+
+#define emacs_raise(sig) msdos_fatal_signal (sig)
 
 /* Define one of these for easier conditionals.  */
 #ifdef HAVE_X_WINDOWS
@@ -142,6 +155,20 @@ You lose; /* Emacs for DOS must be compiled with DJGPP */
 #endif
 #endif
 
+#if defined HAVE_NTGUI && !defined DebPrint
+# ifdef EMACSDEBUG
+extern void _DebPrint (const char *fmt, ...);
+#  define DebPrint(stuff) _DebPrint stuff
+# else
+#  define DebPrint(stuff)
+# endif
+#endif
+
+#if defined CYGWIN && defined HAVE_NTGUI
+# define NTGUI_UNICODE /* Cygwin runs only on UNICODE-supporting systems */
+# define _WIN32_WINNT 0x500 /* Win2k */
+#endif
+
 #ifdef emacs /* Don't do this for lib-src.  */
 /* Tell regex.c to use a type compatible with Emacs.  */
 #define RE_TRANSLATE_TYPE Lisp_Object
@@ -155,6 +182,10 @@ You lose; /* Emacs for DOS must be compiled with DJGPP */
 #endif
 #endif
 
+/* Tell gnulib to omit support for openat-related functions having a
+   first argument other than AT_FDCWD.  */
+#define GNULIB_SUPPORT_ONLY_AT_FDCWD
+
 #include <string.h>
 #include <stdlib.h>
 
@@ -164,7 +195,9 @@ You lose; /* Emacs for DOS must be compiled with DJGPP */
 #define NO_INLINE
 #endif
 
-#if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1))
+#if (__clang__								\
+     ? __has_attribute (externally_visible)				\
+     : (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)))
 #define EXTERNALLY_VISIBLE __attribute__((externally_visible))
 #else
 #define EXTERNALLY_VISIBLE

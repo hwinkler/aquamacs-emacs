@@ -1,6 +1,7 @@
 ;;; register.el --- register commands for Emacs
 
-;; Copyright (C) 1985, 1993-1994, 2001-2012 Free Software Foundation, Inc.
+;; Copyright (C) 1985, 1993-1994, 2001-2013 Free Software Foundation,
+;; Inc.
 
 ;; Maintainer: FSF
 ;; Keywords: internal
@@ -382,6 +383,7 @@ START and END are buffer positions indicating what to append."
      register (cond ((not reg) text)
                     ((stringp reg) (concat reg separator text))
                     (t (error "Register does not contain text")))))
+  (setq deactivate-mark t)
   (cond (delete-flag
 	 (delete-region start end))
 	((called-interactively-p 'interactive)
@@ -400,6 +402,7 @@ START and END are buffer positions indicating what to prepend."
      register (cond ((not reg) text)
                     ((stringp reg) (concat text separator reg))
                     (t (error "Register does not contain text")))))
+  (setq deactivate-mark t)
   (cond (delete-flag
 	 (delete-region start end))
 	((called-interactively-p 'interactive)

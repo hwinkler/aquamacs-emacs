@@ -1,6 +1,6 @@
 ;;; timeclock.el --- mode for keeping track of how much you work
 
-;; Copyright (C) 1999-2012 Free Software Foundation, Inc.
+;; Copyright (C) 1999-2013 Free Software Foundation, Inc.
 
 ;; Author: John Wiegley <johnw@gnu.org>
 ;; Created: 25 Mar 1999
@@ -320,6 +320,9 @@ display (non-nil means on)."
 	(setq timeclock-update-timer nil)))
     (force-mode-line-update)
     (setq timeclock-mode-line-display on-p)))
+
+(define-obsolete-variable-alias 'timeclock-modeline-display
+  'timeclock-mode-line-display "24.3")
 
 ;; This has to be here so that the function definition of
 ;; `timeclock-mode-line-display' is known to the "set" function.

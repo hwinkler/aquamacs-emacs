@@ -1,6 +1,6 @@
 /* Window definitions for GNU Emacs.
-   Copyright (C) 1985-1986, 1993, 1995, 1997-2012
-                 Free Software Foundation, Inc.
+   Copyright (C) 1985-1986, 1993, 1995, 1997-2013 Free Software
+   Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -175,17 +175,13 @@ struct window
        no scroll bar.  A value of t means use frame value.  */
     Lisp_Object vertical_scroll_bar_type;
 
-    /* Z - the buffer position of the last glyph in the current matrix
-       of W.  Only valid if WINDOW_END_VALID is not nil.  */
+    /* Z - the buffer position of the last glyph in the current
+       matrix of W.  Only valid if window_end_valid is nonzero.  */
     Lisp_Object window_end_pos;
+
     /* Glyph matrix row of the last glyph in the current matrix
-       of W.  Only valid if WINDOW_END_VALID is not nil.  */
+       of W.  Only valid if window_end_valid is nonzero.  */
     Lisp_Object window_end_vpos;
-    /* t if window_end_pos is truly valid.
-       This is nil if nontrivial redisplay is preempted
-       since in that case the frame image that window_end_pos
-       did not get onto the frame.  */
-    Lisp_Object window_end_valid;
 
     /* Display-table to use for displaying chars in this window.
        Nil means use the buffer's own display-table.  */
@@ -261,7 +257,7 @@ struct window
     EMACS_INT last_overlay_modified;
 
     /* Value of point at that time.  Since this is a position in a buffer,
-       it should be positive. */
+       it should be positive.  */
     ptrdiff_t last_point;
 
     /* Scaling factor for the glyph_matrix size calculation in this window.
@@ -290,7 +286,7 @@ struct window
     /* Non-zero if this window is a minibuffer window.  */
     unsigned mini : 1;
 
-    /* Non-zero means must regenerate mode line of this window */
+    /* Non-zero means must regenerate mode line of this window.  */
     unsigned update_mode_line : 1;
 
     /* Non-nil if the buffer was "modified" when the window
@@ -339,22 +335,22 @@ struct window
        Otherwise draw them between margin areas and text.  */
     unsigned fringes_outside_margins : 1;
 
+    /* Nonzero if window_end_pos and window_end_vpos are truly valid.
+       This is zero if nontrivial redisplay is preempted since in that case
+       the frame image that window_end_pos did not get onto the frame.  */
+    unsigned window_end_valid : 1;
+
     /* Amount by which lines of this window are scrolled in
        y-direction (smooth scrolling).  */
     int vscroll;
 
-    /* Z_BYTE - the buffer position of the last glyph in the current matrix of W.
-       Should be nonnegative, and only valid if window_end_valid is not nil.  */
+    /* Z_BYTE - buffer position of the last glyph in the current matrix of W.
+       Should be nonnegative, and only valid if window_end_valid is nonzero.  */
     ptrdiff_t window_end_bytepos;
 };
 
 /* Most code should use these functions to set Lisp fields in struct
    window.  */
-WINDOW_INLINE void
-wset_buffer (struct window *w, Lisp_Object val)
-{
-  w->buffer = val;
-}
 WINDOW_INLINE void
 wset_frame (struct window *w, Lisp_Object val)
 {
@@ -404,11 +400,6 @@ WINDOW_INLINE void
 wset_window_end_pos (struct window *w, Lisp_Object val)
 {
   w->window_end_pos = val;
-}
-WINDOW_INLINE void
-wset_window_end_valid (struct window *w, Lisp_Object val)
-{
-  w->window_end_valid = val;
 }
 WINDOW_INLINE void
 wset_window_end_vpos (struct window *w, Lisp_Object val)
@@ -939,18 +930,13 @@ extern EMACS_INT minibuf_level;
 extern int update_mode_lines;
 
 /* Nonzero if window sizes or contents have changed since last
-   redisplay that finished */
+   redisplay that finished.  */
 
 extern int windows_or_buffers_changed;
 
 /* Nonzero means a frame's cursor type has been changed.  */
 
 extern int cursor_type_changed;
-
-/* Number of windows displaying the selected buffer.  Normally this is
-   1, but it can be more.  */
-
-extern int buffer_shared;
 
 /* If *ROWS or *COLS are too small a size for FRAME, set them to the
    minimum allowable size.  */
@@ -970,10 +956,18 @@ struct glyph *get_phys_cursor_glyph (struct window *w);
        || !NILP (XWINDOW (WINDOW)->vchild)		\
        || !NILP (XWINDOW (WINDOW)->hchild)))
 
+/* A window of any sort, leaf or interior, is "valid" if one
+   of its buffer, vchild, or hchild members is non-nil.  */
+#define CHECK_VALID_WINDOW(WINDOW)				\
+  CHECK_TYPE (WINDOW_VALID_P (WINDOW), Qwindow_valid_p, WINDOW)
 
 /* Value is non-zero if WINDOW is a live window.  */
 #define WINDOW_LIVE_P(WINDOW)					\
   (WINDOWP (WINDOW) && !NILP (XWINDOW (WINDOW)->buffer))
+
+/* A window is "live" if and only if it shows a buffer.  */
+#define CHECK_LIVE_WINDOW(WINDOW)				\
+  CHECK_TYPE (WINDOW_LIVE_P (WINDOW), Qwindow_live_p, WINDOW)
 
 /* These used to be in lisp.h.  */
 
@@ -981,6 +975,7 @@ extern Lisp_Object Qwindowp, Qwindow_live_p;
 extern Lisp_Object Vwindow_list;
 
 extern struct window *decode_live_window (Lisp_Object);
+extern struct window *decode_any_window (Lisp_Object);
 extern bool compare_window_configurations (Lisp_Object, Lisp_Object, bool);
 extern void mark_window_cursors_off (struct window *);
 extern int window_internal_height (struct window *);
@@ -988,6 +983,8 @@ extern int window_body_cols (struct window *w);
 extern void temp_output_buffer_show (Lisp_Object);
 extern void replace_buffer_in_windows (Lisp_Object);
 extern void replace_buffer_in_windows_safely (Lisp_Object);
+/* This looks like a setter, but it is a bit special.  */
+extern void wset_buffer (struct window *, Lisp_Object);
 extern void init_window_once (void);
 extern void init_window (void);
 extern void syms_of_window (void);

@@ -1,6 +1,6 @@
 ;;; package.el --- Simple package system for Emacs
 
-;; Copyright (C) 2007-2012 Free Software Foundation, Inc.
+;; Copyright (C) 2007-2013 Free Software Foundation, Inc.
 
 ;; Author: Tom Tromey <tromey@redhat.com>
 ;; Created: 10 Mar 2007
@@ -590,10 +590,14 @@ EXTRA-PROPERTIES is currently unused."
 	 (version-control 'never))
     (unless (fboundp 'autoload-ensure-default-file)
       (package-autoload-ensure-default-file generated-autoload-file))
-    (update-directory-autoloads pkg-dir)))
+    (update-directory-autoloads pkg-dir)
+    (let ((buf (find-buffer-visiting generated-autoload-file)))
+      (when buf (kill-buffer buf)))))
 
 (defvar tar-parse-info)
 (declare-function tar-untar-buffer "tar-mode" ())
+(declare-function tar-header-name "tar-mode" (tar-header))
+(declare-function tar-header-link-type "tar-mode" (tar-header))
 
 (defun package-untar-buffer (dir)
   "Untar the current buffer.
@@ -602,10 +606,16 @@ untar into a directory named DIR; otherwise, signal an error."
   (require 'tar-mode)
   (tar-mode)
   ;; Make sure everything extracts into DIR.
-  (let ((regexp (concat "\\`" (regexp-quote dir) "/")))
+  (let ((regexp (concat "\\`" (regexp-quote (expand-file-name dir)) "/"))
+	(case-fold-search (memq system-type '(windows-nt ms-dos cygwin))))
     (dolist (tar-data tar-parse-info)
-      (unless (string-match regexp (aref tar-data 2))
-	(error "Package does not untar cleanly into directory %s/" dir))))
+      (let ((name (expand-file-name (tar-header-name tar-data))))
+	(or (string-match regexp name)
+	    ;; Tarballs created by some utilities don't list
+	    ;; directories with a trailing slash (Bug#13136).
+	    (and (string-equal dir name)
+		 (eq (tar-header-link-type tar-data) 5))
+	    (error "Package does not untar cleanly into directory %s/" dir)))))
   (tar-untar-buffer))
 
 (defun package-unpack (package version)
@@ -728,6 +738,7 @@ It will move point to somewhere in the headers."
 (defun package-installed-p (package &optional min-version)
   "Return true if PACKAGE, of MIN-VERSION or newer, is installed.
 MIN-VERSION should be a version list."
+  (unless package--initialized (error "package.el is not yet initialized!"))
   (let ((pkg-desc (assq package package-alist)))
     (if pkg-desc
 	(version-list-<= min-version

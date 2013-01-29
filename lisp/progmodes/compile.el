@@ -1,7 +1,7 @@
 ;;; compile.el --- run compiler as inferior of Emacs, parse error messages
 
-;; Copyright (C) 1985-1987, 1993-1999, 2001-2012
-;;   Free Software Foundation, Inc.
+;; Copyright (C) 1985-1987, 1993-1999, 2001-2013 Free Software
+;; Foundation, Inc.
 
 ;; Authors: Roland McGrath <roland@gnu.org>,
 ;;	    Daniel Pfeiffer <occitan@esperanto.org>
@@ -134,6 +134,7 @@ and a string describing how the process finished.")
 
 ;; If you make any changes to `compilation-error-regexp-alist-alist',
 ;; be sure to run the ERT test in test/automated/compile-tests.el.
+;; emacs -batch -l compile-tests.el -f ert-run-tests-batch-and-exit
 
 (defvar compilation-error-regexp-alist-alist
   '((absoft
@@ -170,6 +171,15 @@ of[ \t]+\"?\\([a-zA-Z]?:?[^\":\n]+\\)\"?:" 3 2 nil (1))
     (cucumber
      "\\(?:^cucumber\\(?: -p [^[:space:]]+\\)?\\|#\\)\
 \\(?: \\)\\([^\(].*\\):\\([1-9][0-9]*\\)" 1 2)
+
+    (msft
+     ;; Must be before edg-1, so that MSVC's longer messages are
+     ;; considered before EDG.
+     ;; The message may be a "warning", "error", or "fatal error" with
+     ;; an error code, or "see declaration of" without an error code.
+     "^ *\\([0-9]+>\\)?\\(\\(?:[a-zA-Z]:\\)?[^:(\t\n]+\\)(\\([0-9]+\\)) ?\
+: \\(?:see declaration\\|\\(?:warnin\\(g\\)\\|[a-z ]+\\) C[0-9]+:\\)"
+     2 3 nil (4))
 
     (edg-1
      "^\\([^ \n]+\\)(\\([0-9]+\\)): \\(?:error\\|warnin\\(g\\)\\|remar\\(k\\)\\)"
@@ -252,11 +262,11 @@ of[ \t]+\"?\\([a-zA-Z]?:?[^\":\n]+\\)\"?:" 3 2 nil (1))
      ;; The "in \\|from " exception was added to handle messages from Ruby.
      "^\\(?:[[:alpha:]][-[:alnum:].]+: ?\\|[ \t]+\\(?:in \\|from \\)\\)?\
 \\([0-9]*[^0-9\n]\\(?:[^\n :]\\| [^-/\n]\\|:[^ \n]\\)*?\\): ?\
-\\([0-9]+\\)\\(?:[.:]\\([0-9]+\\)\\)?\
-\\(?:-\\([0-9]+\\)?\\(?:\\.\\([0-9]+\\)\\)?\\)?:\
+\\([0-9]+\\)\\(?:-\\(?4:[0-9]+\\)\\(?:\\.\\(?5:[0-9]+\\)\\)?\
+\\|[.:]\\(?3:[0-9]+\\)\\(?:-\\(?:\\(?4:[0-9]+\\)\\.\\)?\\(?5:[0-9]+\\)\\)?\\)?:\
 \\(?: *\\(\\(?:Future\\|Runtime\\)?[Ww]arning\\|W:\\)\\|\
  *\\([Ii]nfo\\(?:\\>\\|rmationa?l?\\)\\|I:\\|instantiated from\\|[Nn]ote\\)\\|\
- *[Ee]rror\\|\[0-9]?\\(?:[^0-9\n]\\|$\\)\\|[0-9][0-9][0-9]\\)"
+ *[Ee]rror\\|[0-9]?\\(?:[^0-9\n]\\|$\\)\\|[0-9][0-9][0-9]\\)"
      1 (2 . 4) (3 . 5) (6 . 7))
 
     (lcc
@@ -1271,7 +1281,7 @@ to `compilation-error-regexp-alist' if RULES is nil."
       ;; whether or not omake's own error messages are recognized.
       (cond
        ((not (memq 'omake compilation-error-regexp-alist)) nil)
-       ((string-match "\\`\\([^^]\\|^\\( \\*\\|\\[\\)\\)" pat)
+       ((string-match "\\`\\([^^]\\|\\^\\( \\*\\|\\[\\)\\)" pat)
         nil) ;; Not anchored or anchored but already allows empty spaces.
        (t (setq pat (concat "^ *" (substring pat 1)))))
 
@@ -1418,8 +1428,9 @@ and move to the source code that caused it.
 If optional second arg COMINT is t the buffer will be in Comint mode with
 `compilation-shell-minor-mode'.
 
-Interactively, prompts for the command if `compilation-read-command' is
-non-nil; otherwise uses `compile-command'.  With prefix arg, always prompts.
+Interactively, prompts for the command if the variable
+`compilation-read-command' is non-nil; otherwise uses`compile-command'.
+With prefix arg, always prompts.
 Additionally, with universal prefix arg, compilation buffer will be in
 comint mode, i.e. interactive.
 
@@ -1559,12 +1570,20 @@ Returns the compilation buffer created."
 	;; Then evaluate a cd command if any, but don't perform it yet, else
 	;; start-command would do it again through the shell: (cd "..") AND
 	;; sh -c "cd ..; make"
-	(cd (if (string-match "\\`\\s *cd\\(?:\\s +\\(\\S +?\\)\\)?\\s *[;&\n]"
-			      command)
-		(if (match-end 1)
-		    (substitute-env-vars (match-string 1 command))
-		  "~")
-	      default-directory))
+	(cd (cond
+             ((not (string-match "\\`\\s *cd\\(?:\\s +\\(\\S +?\\|'[^']*'\\|\"\\(?:[^\"`$\\]\\|\\\\.\\)*\"\\)\\)?\\s *[;&\n]"
+                                 command))
+              default-directory)
+             ((not (match-end 1)) "~")
+             ((eq (aref command (match-beginning 1)) ?\')
+              (substring command (1+ (match-beginning 1))
+                         (1- (match-end 1))))
+             ((eq (aref command (match-beginning 1)) ?\")
+              (replace-regexp-in-string
+               "\\\\\\(.\\)" "\\1"
+               (substring command (1+ (match-beginning 1))
+                          (1- (match-end 1)))))
+             (t (substitute-env-vars (match-string 1 command)))))
 	(erase-buffer)
 	;; Select the desired mode.
 	(if (not (eq mode t))
@@ -1594,7 +1613,11 @@ Returns the compilation buffer created."
 		(format "%s started at %s\n\n"
 			mode-name
 			(substring (current-time-string) 0 19))
-		command "\n")
+		;; The command could be split into several lines, see
+		;; `rgrep' for example.  We want to display it as one
+		;; line.
+		(apply 'concat (split-string command (regexp-quote "\\\n") t))
+		"\n")
 	(setq thisdir default-directory))
       (set-buffer-modified-p nil))
     ;; Pop up the compilation buffer.

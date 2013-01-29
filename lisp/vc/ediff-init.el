@@ -1,6 +1,6 @@
 ;;; ediff-init.el --- Macros, variables, and defsubsts used by Ediff
 
-;; Copyright (C) 1994-2012 Free Software Foundation, Inc.
+;; Copyright (C) 1994-2013 Free Software Foundation, Inc.
 
 ;; Author: Michael Kifer <kifer@cs.stonybrook.edu>
 ;; Package: ediff
@@ -979,7 +979,7 @@ this variable represents.")
 (defface ediff-fine-diff-A
   (if (featurep 'emacs)
       '((((class color) (min-colors 88) (background light))
-	 :background "#ffaaaa")
+	 :background "#ffbbbb")
 	(((class color) (min-colors 88) (background dark))
 	 :background "#aa2222")
 	(((class color) (min-colors 16))

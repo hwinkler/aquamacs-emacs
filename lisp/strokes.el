@@ -1,6 +1,6 @@
 ;;; strokes.el --- control Emacs through mouse strokes
 
-;; Copyright (C) 1997, 2000-2012  Free Software Foundation, Inc.
+;; Copyright (C) 1997, 2000-2013 Free Software Foundation, Inc.
 
 ;; Author: David Bakhash <cadet@alum.mit.edu>
 ;; Maintainer: FSF
@@ -212,12 +212,13 @@ static char * stroke_xpm[] = {
   :link '(emacs-commentary-link "strokes")
   :group 'mouse)
 
+(define-obsolete-variable-alias 'strokes-modeline-string 'strokes-lighter
+  "24.3")
+
 (defcustom strokes-lighter " Strokes"
   "Mode line identifier for Strokes mode."
   :type 'string
   :group 'strokes)
-
-(define-obsolete-variable-alias 'strokes-modeline-string 'strokes-lighter "24.3")
 
 (defcustom strokes-character ?@
   "Character used when drawing strokes in the strokes buffer.

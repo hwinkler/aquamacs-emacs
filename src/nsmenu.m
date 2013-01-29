@@ -1,5 +1,5 @@
 /* NeXT/Open/GNUstep and MacOSX Cocoa menu and toolbar module.
-   Copyright (C) 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 2007-2013 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -132,8 +132,7 @@ ns_update_menubar (struct frame *f, bool deep_p, EmacsMenu *submenu)
   static EmacsMenu *last_submenu = nil;
   BOOL needsSet = NO;
   const char *submenuTitle = [[submenu title] UTF8String];
-  extern int waiting_for_input;
-  int owfi;
+  bool owfi;
   Lisp_Object items;
   widget_value *wv, *first_wv, *prev_wv = 0;
   int i;
@@ -200,7 +199,8 @@ ns_update_menubar (struct frame *f, bool deep_p, EmacsMenu *submenu)
       /* Fully parse one or more of the submenus. */
       int n = 0;
       int *submenu_start, *submenu_end;
-      int *submenu_top_level_items, *submenu_n_panes;
+      bool *submenu_top_level_items;
+      int *submenu_n_panes;
       struct buffer *prev = current_buffer;
       Lisp_Object buffer;
       ptrdiff_t specpdl_count = SPECPDL_INDEX ();
@@ -818,11 +818,6 @@ extern NSString *NSMenuDidBeginTrackingNotification;
 #ifdef NS_IMPL_GNUSTEP
   if ([[self window] isVisible])
     [self sizeToFit];
-#else
-#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_2
-  if ([self supermenu] == nil)
-    [self sizeToFit];
-#endif
 #endif
 }
 
@@ -844,7 +839,7 @@ extern NSString *NSMenuDidBeginTrackingNotification;
 
 /* run a menu in popup mode */
 - (Lisp_Object)runMenuAt: (NSPoint)p forFrame: (struct frame *)f
-                 keymaps: (int)keymaps
+                 keymaps: (bool)keymaps
 {
   EmacsView *view = FRAME_NS_VIEW (f);
   NSEvent *e, *event;
@@ -883,7 +878,7 @@ extern NSString *NSMenuDidBeginTrackingNotification;
    ========================================================================== */
 
 Lisp_Object
-ns_menu_show (FRAME_PTR f, int x, int y, int for_click, int keymaps,
+ns_menu_show (FRAME_PTR f, int x, int y, bool for_click, bool keymaps,
 	      Lisp_Object title, const char **error)
 {
   EmacsMenu *pmenu;
@@ -905,7 +900,7 @@ ns_menu_show (FRAME_PTR f, int x, int y, int for_click, int keymaps,
 
 #if 0
   /* FIXME: a couple of one-line differences prevent reuse */
-  wv = digest_single_submenu (0, menu_items_used, Qnil);
+  wv = digest_single_submenu (0, menu_items_used, 0);
 #else
   {
   widget_value *save_wv = 0, *prev_wv = 0;
@@ -1735,8 +1730,7 @@ struct Popdown_data
 static Lisp_Object
 pop_down_menu (Lisp_Object arg)
 {
-  struct Lisp_Save_Value *p = XSAVE_VALUE (arg);
-  struct Popdown_data *unwind_data = (struct Popdown_data *) p->pointer;
+  struct Popdown_data *unwind_data = XSAVE_POINTER (arg, 0);
 
   block_input ();
   if (popup_activated_flag)
@@ -1749,7 +1743,7 @@ pop_down_menu (Lisp_Object arg)
 	  [NSApp endSheet:[popupSheetAlert window]];
 	  [popupSheetAlert release];
 	} else
-          [panel close];
+      [panel close];
 
       [unwind_data->pool release];
 
@@ -1829,7 +1823,7 @@ ns_popup_dialog (Lisp_Object position, Lisp_Object contents, Lisp_Object header)
        the dialog.  */
     contents = Fcons (title, Fcons (Fcons (build_string ("Ok"), Qt), Qnil));
 
-  block_input();
+  block_input ();
   pool = [[NSAutoreleasePool alloc] init];
 
   dialog = [[EmacsAlertPanel alloc] init];
@@ -1867,18 +1861,18 @@ ns_popup_dialog (Lisp_Object position, Lisp_Object contents, Lisp_Object header)
     {
 	  [dialog setMessageText:
 		   [NSString stringWithUTF8String: SDATA (head)]];
-    }
+}
     }
 
-  {
+{
     int i;
 
   NSInteger ret = -1;
 
-  {
+{
     ptrdiff_t specpdl_count = SPECPDL_INDEX ();
     struct Popdown_data *unwind_data = xmalloc (sizeof (*unwind_data));
-    
+
     popup_activated_flag = 1;
 
     unwind_data->pool = pool;
@@ -1916,21 +1910,21 @@ ns_popup_dialog (Lisp_Object position, Lisp_Object contents, Lisp_Object header)
          TODO: use return value to avoid calling every iteration. */
       timer_check ();
       [NSThread sleepUntilDate: [NSDate dateWithTimeIntervalSinceNow: 0.1]];
-        }
+    }
   if (ret == -1 && ret2 != -1)
     ret = ret2;
 
   if (ret>=0 && ret < ((EmacsAlertPanel *) dialog)->returnValueCount)
-        {
+    {
       // *(EMACS_INT*)(&tem)
       tem = (Lisp_Object) dialog->returnValues[ret];
       if ([[dialog suppressionButton] state] == NSOnState)
         {
 	  tem = Fcons (tem, dialog->returnValues[[[dialog suppressionButton] tag]]);
         }
-    }
+        }
     unbind_to (specpdl_count, Qnil);  /* calls pop_down_menu */
-}
+        }
   unblock_input();
   [dialog release];
   if (ret==-2) /*cancel*/
@@ -1948,7 +1942,7 @@ ns_popup_dialog (Lisp_Object position, Lisp_Object contents, Lisp_Object header)
    ========================================================================== */
 
 @interface FlippedView : NSView
-    {
+{
     }
 @end
 
@@ -1970,24 +1964,24 @@ ns_popup_dialog (Lisp_Object position, Lisp_Object contents, Lisp_Object header)
   return self;
 }
 - (void)dealloc
-{
+    {
   free(returnValues);
   [super dealloc];
-}
+    }
 
 
 - (void) alertDidEnd:(NSAlert *)alert returnCode:(NSInteger)returnCode contextInfo:(void *)contextInfo
-{
+  {
   * ((NSInteger*) contextInfo) = returnCode;
     }
 
 /* do to: move this into init: */
 - (void) processDialogFromList: (Lisp_Object)list
-  {
+      {
   Lisp_Object item;
   int cancel = 1;
   for (; CONSP (list) && returnValueCount<20; list = XCDR (list))
-    {
+          {
       item = XCAR (list);
 
       if (STRINGP (item))
@@ -2017,10 +2011,10 @@ ns_popup_dialog (Lisp_Object position, Lisp_Object contents, Lisp_Object header)
 		key = nil;
         }
 	  else
-	    {
+      {
 	      if (STRINGP (XCAR (item)))
 		title = [NSString stringWithUTF8String: SDATA (XCAR (item))];
-    }
+      }
 	  if (EQ (XCDR (item), intern ("suppress")))
       {
 	      [self setShowsSuppressionButton:YES];
@@ -2030,31 +2024,31 @@ ns_popup_dialog (Lisp_Object position, Lisp_Object contents, Lisp_Object header)
 	  else
 	    { /* normal button*/
 	      button = [self addButtonWithTitle: title];
-	    }
+  }
 	  [button setTag: returnValueCount];
 	  if (key)
-      {
+{
 	      [button setKeyEquivalent: key];
 	      /* buttons like Don't Save have a non-nil modifier
 		 by default.  We have to reset that. */
 	      [button setKeyEquivalentModifierMask: 0];
-      }
+}
 	  returnValues[returnValueCount++] = XCDR (item);
-  }
+        }
       else if (EQ (item, intern ("cancel")))
 	{ /* add cancel button */
 	  [[self addButtonWithTitle:  @"Cancel"] setTag: -2];
 	  cancel = 0;
-}
+        }
       else if (EQ (item, intern ("no-cancel")))
 	{ /* skip cancel button */
 	  cancel = 0;
-}
+    }
     }
 
   if (cancel || returnValueCount == 0)
     [[self addButtonWithTitle: @"Cancel"] setTag: -2];
-        }
+}
 
 @end
 

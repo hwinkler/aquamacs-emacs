@@ -1,6 +1,6 @@
 ;;; repeat.el --- convenient way to repeat the previous command  -*- lexical-binding: t -*-
 
-;; Copyright (C) 1998, 2001-2012 Free Software Foundation, Inc.
+;; Copyright (C) 1998, 2001-2013 Free Software Foundation, Inc.
 
 ;; Author: Will Mengarini <seldon@eskimo.com>
 ;; Created: Mo 02 Mar 98
@@ -289,6 +289,10 @@ recently executed command not bound to an input event\"."
                  (interactive)
                  (let ((repeat-message-function fun))
                    (setq this-command 'repeat)
+		   ;; Beware: messing with `real-this-command' is *bad*, but we
+		   ;; need it so `last-repeatable-command' can be recognized
+		   ;; later (bug#12232).
+                   (setq real-this-command 'repeat)
                    (call-interactively 'repeat))))))
          map)))))
 

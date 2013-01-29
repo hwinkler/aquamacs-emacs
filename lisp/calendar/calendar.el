@@ -1,6 +1,7 @@
 ;;; calendar.el --- calendar functions
 
-;; Copyright (C) 1988-1995, 1997, 2000-2012  Free Software Foundation, Inc.
+;; Copyright (C) 1988-1995, 1997, 2000-2013 Free Software Foundation,
+;; Inc.
 
 ;; Author: Edward M. Reingold <reingold@cs.uiuc.edu>
 ;; Maintainer: Glenn Morris <rgm@gnu.org>
@@ -511,7 +512,7 @@ Must be at least one less than `calendar-column-width'."
   :version "23.1")
 
 (defcustom calendar-intermonth-header nil
-  "Header text display in the space to the left of each calendar month.
+  "Header text to display in the space to the left of each calendar month.
 See `calendar-intermonth-text'."
   :group 'calendar
   :initialize 'custom-initialize-default
@@ -1561,11 +1562,13 @@ line."
 (defun calendar-redraw ()
   "Redraw the calendar display, if `calendar-buffer' is live."
   (interactive)
-  (if (get-buffer calendar-buffer)
-      (with-current-buffer calendar-buffer
-        (let ((cursor-date (calendar-cursor-to-nearest-date)))
-          (calendar-generate-window displayed-month displayed-year)
-          (calendar-cursor-to-visible-date cursor-date)))))
+  (when (get-buffer calendar-buffer)
+    (with-current-buffer calendar-buffer
+      (let ((cursor-date (calendar-cursor-to-nearest-date)))
+        (calendar-generate-window displayed-month displayed-year)
+        (calendar-cursor-to-visible-date cursor-date))
+      (when (window-live-p (get-buffer-window))
+        (set-window-point (get-buffer-window) (point))))))
 
 (defvar calendar-mode-map
   (let ((map (make-keymap)))
@@ -1683,8 +1686,9 @@ line."
     (define-key map "td" 'cal-tex-cursor-day)
     (define-key map "tw1" 'cal-tex-cursor-week)
     (define-key map "tw2" 'cal-tex-cursor-week2)
-    (define-key map "tw3" 'cal-tex-cursor-week-iso)
-    (define-key map "tw4" 'cal-tex-cursor-week-monday)
+    (define-key map "tw3" 'cal-tex-cursor-week-iso) ; FIXME twi ?
+    (define-key map "tw4" 'cal-tex-cursor-week-monday) ; twm ?
+    (define-key map "twW" 'cal-tex-cursor-week2-summary)
     (define-key map "tfd" 'cal-tex-cursor-filofax-daily)
     (define-key map "tfw" 'cal-tex-cursor-filofax-2week)
     (define-key map "tfW" 'cal-tex-cursor-filofax-week)

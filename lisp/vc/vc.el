@@ -1,6 +1,6 @@
 ;;; vc.el --- drive a version-control system from within Emacs  -*- lexical-binding: t -*-
 
-;; Copyright (C) 1992-1998, 2000-2012 Free Software Foundation, Inc.
+;; Copyright (C) 1992-1998, 2000-2013 Free Software Foundation, Inc.
 
 ;; Author:     FSF (see below for full credits)
 ;; Maintainer: Andre Spiegel <spiegel@gnu.org>
@@ -659,6 +659,10 @@
 (eval-when-compile
   (require 'dired))
 
+(declare-function dired-get-filename "dired" (&optional localp noerror))
+(declare-function dired-move-to-filename "dired" (&optional err eol))
+(declare-function dired-marker-regexp "dired" ())
+
 (unless (assoc 'vc-parent-buffer minor-mode-alist)
   (setq minor-mode-alist
 	(cons '(vc-parent-buffer vc-parent-buffer-name)
@@ -1072,6 +1076,17 @@ For old-style locking-based version control systems, like RCS:
          ;; among all the `files'.
 	 (model (nth 4 vc-fileset)))
 
+    ;; If a buffer has unsaved changes, a checkout would discard those
+    ;; changes, so treat the buffer as having unlocked changes.
+    (when (and (not (eq model 'implicit)) (eq state 'up-to-date))
+      (let ((files files))
+	(while files
+	  (let ((buffer (get-file-buffer (car files))))
+	    (and buffer
+		 (buffer-modified-p buffer)
+		 (setq state 'unlocked-changes
+		       files nil))))))
+
     ;; Do the right thing
     (cond
      ((eq state 'missing)
@@ -1271,12 +1286,10 @@ first backend that could register the file is used."
     ;; many VCS allow that as well.
     (dolist (fname files)
       (let ((bname (get-file-buffer fname)))
-	(unless fname (setq fname buffer-file-name))
-	(when (vc-backend fname)
-	  (if (vc-registered fname)
-	      (error "This file is already registered")
-	    (unless (y-or-n-p "Previous master file has vanished.  Make a new one? ")
-	      (error "Aborted"))))
+	(unless fname
+	  (setq fname buffer-file-name))
+	(when (vc-call-backend backend 'registered fname)
+	  (error "This file is already registered"))
 	;; Watch out for new buffers of size 0: the corresponding file
 	;; does not exist yet, even though buffer-modified-p is nil.
 	(when bname
@@ -1584,21 +1597,21 @@ Return t if the buffer had changes, nil otherwise."
     (let ((vc-disable-async-diff (not async)))
       (vc-call-backend (car vc-fileset) 'diff files rev1 rev2 buffer))
     (set-buffer buffer)
+    (diff-mode)
+    (set (make-local-variable 'diff-vc-backend) (car vc-fileset))
+    (set (make-local-variable 'revert-buffer-function)
+	 `(lambda (ignore-auto noconfirm)
+	    (vc-diff-internal ,async ',vc-fileset ,rev1 ,rev2 ,verbose)))
+    ;; Make the *vc-diff* buffer read only, the diff-mode key
+    ;; bindings are nicer for read only buffers. pcl-cvs does the
+    ;; same thing.
+    (setq buffer-read-only t)
     (if (and (zerop (buffer-size))
              (not (get-buffer-process (current-buffer))))
         ;; Treat this case specially so as not to pop the buffer.
         (progn
           (message "%s" (cdr messages))
           nil)
-      (diff-mode)
-      (set (make-local-variable 'diff-vc-backend) (car vc-fileset))
-      (set (make-local-variable 'revert-buffer-function)
-	   `(lambda (ignore-auto noconfirm)
-	      (vc-diff-internal ,async ',vc-fileset ,rev1 ,rev2 ,verbose)))
-      ;; Make the *vc-diff* buffer read only, the diff-mode key
-      ;; bindings are nicer for read only buffers. pcl-cvs does the
-      ;; same thing.
-      (setq buffer-read-only t)
       ;; Display the buffer, but at the end because it can change point.
       (pop-to-buffer (current-buffer))
       ;; The diff process may finish early, so call `vc-diff-finish'
@@ -2556,8 +2569,12 @@ backend to NEW-BACKEND, and unregister FILE from the current backend.
 
 ;;;###autoload
 (defun vc-delete-file (file)
-  "Delete file and mark it as such in the version control system."
-  (interactive "fVC delete file: ")
+  "Delete file and mark it as such in the version control system.
+If called interactively, read FILE, defaulting to the current
+buffer's file name if it's under version control."
+  (interactive (list (read-file-name "VC delete file: " nil
+                                     (when (vc-backend buffer-file-name)
+                                       buffer-file-name) t)))
   (setq file (expand-file-name file))
   (let ((buf (get-file-buffer file))
         (backend (vc-backend file)))
@@ -2595,8 +2612,13 @@ backend to NEW-BACKEND, and unregister FILE from the current backend.
 
 ;;;###autoload
 (defun vc-rename-file (old new)
-  "Rename file OLD to NEW in both work area and repository."
-  (interactive "fVC rename file: \nFRename to: ")
+  "Rename file OLD to NEW in both work area and repository.
+If called interactively, read OLD and NEW, defaulting OLD to the
+current buffer's file name if it's under version control."
+  (interactive (list (read-file-name "VC rename file: " nil
+                                     (when (vc-backend buffer-file-name)
+                                       buffer-file-name) t)
+                     (read-file-name "Rename to: ")))
   ;; in CL I would have said (setq new (merge-pathnames new old))
   (let ((old-base (file-name-nondirectory old)))
     (when (and (not (string= "" old-base))

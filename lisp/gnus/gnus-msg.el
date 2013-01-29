@@ -1,6 +1,6 @@
 ;;; gnus-msg.el --- mail and post interface for Gnus
 
-;; Copyright (C) 1995-2012  Free Software Foundation, Inc.
+;; Copyright (C) 1995-2013 Free Software Foundation, Inc.
 
 ;; Author: Masanobu UMEDA <umerin@flab.flab.fujitsu.junet>
 ;;	Lars Magne Ingebrigtsen <larsi@gnus.org>
@@ -319,6 +319,7 @@ The current buffer (when the hook is run) contains the message
 including the message header.  Changes made to the message will
 only affect the Gcc copy, but not the original message."
   :group 'gnus-message
+  :version "24.3"
   :type 'hook)
 
 (defcustom gnus-gcc-post-body-encode-hook nil
@@ -327,6 +328,7 @@ The current buffer (when the hook is run) contains the message
 including the message header.  Changes made to the message will
 only affect the Gcc copy, but not the original message."
   :group 'gnus-message
+  :version "24.3"
   :type 'hook)
 
 (autoload 'gnus-message-citation-mode "gnus-cite" nil t)
@@ -1382,7 +1384,8 @@ For the \"inline\" alternatives, also see the variable
     (dolist (style (if styles
 		       (append gnus-posting-styles (list (cons ".*" styles)))
 		     gnus-posting-styles))
-      (when (string-match (pop style) gnus-newsgroup-name)
+      (when (and (stringp (car style))
+		 (string-match (pop style) gnus-newsgroup-name))
 	(when (setq tem (cadr (assq 'name style)))
 	  (setq user-full-name tem))
 	(when (setq tem (cadr (assq 'address style)))
@@ -1742,7 +1745,8 @@ this is a reply."
 	      (setq var (cdr var)))
 	    result)))
 	 name)
-    (when (or groups gcc-self-val)
+    (when (and (or groups gcc-self-val)
+	       (gnus-alive-p))
       (when (stringp groups)
 	(setq groups (list groups)))
       (save-excursion

@@ -1,6 +1,6 @@
 /* NeXT/Open/GNUstep / MacOSX Cocoa selection processing for emacs.
-   Copyright (C) 1993-1994, 2005-2006, 2008-2012
-     Free Software Foundation, Inc.
+   Copyright (C) 1993-1994, 2005-2006, 2008-2013 Free Software
+   Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -299,7 +299,7 @@ ns_string_from_pasteboard (id pb)
       utfStr = [mstr UTF8String];
       length = [mstr lengthOfBytesUsingEncoding: NSUTF8StringEncoding];
 
-#if ! defined (NS_IMPL_COCOA) || MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_4
+#if ! defined (NS_IMPL_COCOA)
       if (!utfStr)
         {
           utfStr = [mstr cString];
@@ -310,7 +310,7 @@ ns_string_from_pasteboard (id pb)
   NS_HANDLER
     {
       message1 ("ns_string_from_pasteboard: UTF8String failed\n");
-#if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_4
+#if defined (NS_IMPL_COCOA)
       utfStr = "Conversion failed";
 #else
       utfStr = [str lossyCString];

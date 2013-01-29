@@ -1,6 +1,6 @@
 ;;; gdb-mi.el --- User Interface for running GDB
 
-;; Copyright (C) 2007-2012 Free Software Foundation, Inc.
+;; Copyright (C) 2007-2013 Free Software Foundation, Inc.
 
 ;; Author: Nick Roberts <nickrob@gnu.org>
 ;; Maintainer: FSF
@@ -607,12 +607,12 @@ executable followed by command-line options.  The command-line
 options should include \"-i=mi\" to use gdb's MI text interface.
 Note that the old \"--annotate\" option is no longer supported.
 
-If `gdb-many-windows' is nil (the default value) then gdb just
+If option `gdb-many-windows' is nil (the default value) then gdb just
 pops up the GUD buffer unless `gdb-show-main' is t.  In this case
 it starts with two windows: one displaying the GUD buffer and the
 other with the source file with the main routine of the inferior.
 
-If `gdb-many-windows' is t, regardless of the value of
+If option `gdb-many-windows' is t, regardless of the value of
 `gdb-show-main', the layout below will appear.  Keybindings are
 shown in some of the buffers.
 
@@ -1516,9 +1516,9 @@ this trigger is subscribed to `gdb-buf-publisher' and called with
 	(comint-exec io-buffer "gdb-inferior" nil nil nil)
 	(gdb-inferior-io--init-proc (get-buffer-process io-buffer))))))
 
-(defvar gdb-display-buffer-other-frame-action
-  `((display-buffer-reuse-window display-buffer-pop-up-frame)
-    (reusable-frames . 0)
+(defcustom gdb-display-buffer-other-frame-action
+  '((display-buffer-reuse-window display-buffer-pop-up-frame)
+    (reusable-frames . visible)
     (inhibit-same-window . t)
     (pop-up-frame-parameters (height . 14)
 			     (width . 80)
@@ -1526,8 +1526,11 @@ this trigger is subscribed to `gdb-buf-publisher' and called with
 			     (tool-bar-lines . nil)
 			     (menu-bar-lines . nil)
 			     (minibuffer . nil)))
-  "A `display-buffer' action for displaying GDB utility frames.")
-(put 'gdb-display-buffer-other-frame-action 'risky-local-variable t)
+  "`display-buffer' action for displaying GDB utility frames."
+  :group 'gdb
+  :type display-buffer--action-custom-type
+  :risky t
+  :version "24.3")
 
 (defun gdb-frame-io-buffer ()
   "Display IO of debugged program in another frame."
@@ -4066,7 +4069,7 @@ window is dedicated."
   (set-window-dedicated-p window t))
 
 (defun gdb-setup-windows ()
-  "Layout the window pattern for `gdb-many-windows'."
+  "Layout the window pattern for option `gdb-many-windows'."
   (gdb-get-buffer-create 'gdb-locals-buffer)
   (gdb-get-buffer-create 'gdb-stack-buffer)
   (gdb-get-buffer-create 'gdb-breakpoints-buffer)
@@ -4117,7 +4120,7 @@ of the debugged program.  Non-nil means display the layout shown for
 
 (defun gdb-restore-windows ()
   "Restore the basic arrangement of windows used by gdb.
-This arrangement depends on the value of `gdb-many-windows'."
+This arrangement depends on the value of option `gdb-many-windows'."
   (interactive)
   (switch-to-buffer gud-comint-buffer) ;Select the right window and frame.
   (delete-other-windows)
@@ -4175,9 +4178,9 @@ buffers, if required."
   (if gdb-many-windows
       (gdb-setup-windows)
     (gdb-get-buffer-create 'gdb-breakpoints-buffer)
-    (if (and gdb-show-main gdb-main-file)
-        (let ((pop-up-windows t))
-          (display-buffer (gud-find-file gdb-main-file)))))
+    (and gdb-show-main
+	 gdb-main-file
+	 (display-buffer (gud-find-file gdb-main-file))))
   (gdb-force-mode-line-update
    (propertize "ready" 'face font-lock-variable-name-face)))
 

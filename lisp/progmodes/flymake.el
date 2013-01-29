@@ -1,6 +1,6 @@
 ;;; flymake.el -- a universal on-the-fly syntax checker
 
-;; Copyright (C) 2003-2012 Free Software Foundation, Inc.
+;; Copyright (C) 2003-2013 Free Software Foundation, Inc.
 
 ;; Author:  Pavel Kobyakov <pk_at_work@yahoo.com>
 ;; Maintainer: Pavel Kobyakov <pk_at_work@yahoo.com>
@@ -764,24 +764,41 @@ line number outside the file being compiled."
   (and (overlayp ov) (overlay-get ov 'flymake-overlay)))
 
 (defcustom flymake-error-bitmap '(exclamation-mark error)
-  "Bitmap used in the fringe for indicating errors.
+  "Bitmap (a symbol) used in the fringe for indicating errors.
 The value may also be a list of two elements where the second
-element specifies the face for the bitmap."
+element specifies the face for the bitmap.  For possible bitmap
+symbols, see `fringe-bitmaps'.  See also `flymake-warning-bitmap'.
+
+The option `flymake-fringe-indicator-position' controls how and where
+this is used."
   :group 'flymake
-  :type 'symbol)
+  :version "24.3"
+  :type '(choice (symbol :tag "Bitmap")
+                 (list :tag "Bitmap and face"
+                       (symbol :tag "Bitmap")
+                       (face :tag "Face"))))
 
 (defcustom flymake-warning-bitmap 'question-mark
-  "Bitmap used in the fringe for indicating warnings.
+  "Bitmap (a symbol) used in the fringe for indicating warnings.
 The value may also be a list of two elements where the second
-element specifies the face for the bitmap."
+element specifies the face for the bitmap.  For possible bitmap
+symbols, see `fringe-bitmaps'.  See also `flymake-error-bitmap'.
+
+The option `flymake-fringe-indicator-position' controls how and where
+this is used."
   :group 'flymake
-  :type 'symbol)
+  :version "24.3"
+  :type '(choice (symbol :tag "Bitmap")
+                 (list :tag "Bitmap and face"
+                       (symbol :tag "Bitmap")
+                       (face :tag "Face"))))
 
 (defcustom flymake-fringe-indicator-position 'left-fringe
   "The position to put flymake fringe indicator.
-The value can be nil, left-fringe or right-fringe.
-Fringe indicators are disabled if nil."
+The value can be nil (do not use indicators), `left-fringe' or `right-fringe'.
+See `flymake-error-bitmap' and `flymake-warning-bitmap'."
   :group 'flymake
+  :version "24.3"
   :type '(choice (const left-fringe)
 		 (const right-fringe)
 		 (const :tag "No fringe indicators" nil)))
@@ -827,13 +844,21 @@ Return t if it has at least one flymake overlay, nil if no overlay."
     has-flymake-overlays))
 
 (defface flymake-errline
-  '((t :inherit error))
+  '((((supports :underline (:style wave)))
+     :underline (:style wave :color "Red1"))
+    (t
+     :inherit error))
   "Face used for marking error lines."
+  :version "24.4"
   :group 'flymake)
 
 (defface flymake-warnline
-  '((t :inherit warning))
+  '((((supports :underline (:style wave)))
+     :underline (:style wave :color "DarkOrange"))
+    (t
+     :inherit warning))
   "Face used for marking warning lines."
+  :version "24.4"
   :group 'flymake)
 
 (defun flymake-highlight-line (line-no line-err-info-list)
@@ -1532,10 +1557,11 @@ if ARG is omitted or nil."
     (error "Invalid file-name"))
   (or prefix
       (setq prefix "flymake"))
-  (let* ((temp-name   (concat (file-name-sans-extension file-name)
-			      "_" prefix
-			      (and (file-name-extension file-name)
-				   (concat "." (file-name-extension file-name))))))
+  (let* ((ext (file-name-extension file-name))
+	 (temp-name (file-truename
+		     (concat (file-name-sans-extension file-name)
+			     "_" prefix
+			     (and ext (concat "." ext))))))
     (flymake-log 3 "create-temp-inplace: file=%s temp=%s" file-name temp-name)
     temp-name))
 

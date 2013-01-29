@@ -1,6 +1,6 @@
 ;; gnus-notifications.el -- Send notification on new message in Gnus
 
-;; Copyright (C) 2012 Free Software Foundation, Inc.
+;; Copyright (C) 2012-2013 Free Software Foundation, Inc.
 
 ;; Author: Julien Danjou <julien@danjou.info>
 ;; Keywords: news
@@ -42,6 +42,7 @@
 
 (defgroup gnus-notifications nil
   "Send notifications on new message in Gnus."
+  :version "24.3"
   :group 'gnus)
 
 (defcustom gnus-notifications-use-google-contacts t

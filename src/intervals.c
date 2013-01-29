@@ -1,5 +1,6 @@
 /* Code for doing intervals.
-   Copyright (C) 1993-1995, 1997-1998, 2001-2012  Free Software Foundation, Inc.
+   Copyright (C) 1993-1995, 1997-1998, 2001-2013 Free Software
+   Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -64,7 +65,7 @@ static INTERVAL reproduce_tree (INTERVAL, INTERVAL);
 /* Use these functions to set Lisp_Object
    or pointer slots of struct interval.  */
 
-static inline void
+static void
 set_interval_object (INTERVAL i, Lisp_Object obj)
 {
   eassert (BUFFERP (obj) || STRINGP (obj));
@@ -72,13 +73,13 @@ set_interval_object (INTERVAL i, Lisp_Object obj)
   i->up.obj = obj;
 }
 
-static inline void
+static void
 set_interval_left (INTERVAL i, INTERVAL left)
 {
   i->left = left;
 }
 
-static inline void
+static void
 set_interval_right (INTERVAL i, INTERVAL right)
 {
   i->right = right;
@@ -87,7 +88,7 @@ set_interval_right (INTERVAL i, INTERVAL right)
 /* Make the parent of D be whatever the parent of S is, regardless
    of the type.  This is used when balancing an interval tree.  */
 
-static inline void
+static void
 copy_interval_parent (INTERVAL d, INTERVAL s)
 {
   d->up = s->up;
@@ -341,7 +342,7 @@ root_interval (INTERVAL interval)
      c		  c
 */
 
-static inline INTERVAL
+static INTERVAL
 rotate_right (INTERVAL interval)
 {
   INTERVAL i;
@@ -388,7 +389,7 @@ rotate_right (INTERVAL interval)
     c               c
 */
 
-static inline INTERVAL
+static INTERVAL
 rotate_left (INTERVAL interval)
 {
   INTERVAL i;
@@ -466,7 +467,7 @@ balance_an_interval (INTERVAL i)
 /* Balance INTERVAL, potentially stuffing it back into its parent
    Lisp Object.  */
 
-static inline INTERVAL
+static INTERVAL
 balance_possible_root_interval (INTERVAL interval)
 {
   Lisp_Object parent;
@@ -1624,7 +1625,8 @@ graft_intervals_into_buffer (INTERVAL source, ptrdiff_t position,
 	  XSETBUFFER (buf, buffer);
 	  set_text_properties_1 (make_number (position),
 				 make_number (position + length),
-				 Qnil, buf, 0);
+				 Qnil, buf,
+				 find_interval (tree, position));
 	}
       /* Shouldn't be necessary.  --Stef  */
       buffer_balance_intervals (buffer);

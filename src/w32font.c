@@ -1,5 +1,5 @@
 /* Font backend for the Microsoft Windows API.
-   Copyright (C) 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 2007-2013 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -18,6 +18,7 @@ along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include <config.h>
 #include <windows.h>
+#include <stdio.h>
 #include <math.h>
 #include <ctype.h>
 #include <commdlg.h>
@@ -1434,6 +1435,9 @@ w32font_coverage_ok (FONTSIGNATURE * coverage, BYTE charset)
   return 1;
 }
 
+#ifndef WINDOWSNT
+#define _strlwr strlwr
+#endif /* !WINDOWSNT */
 
 static int
 check_face_name (LOGFONT *font, char *full_name)

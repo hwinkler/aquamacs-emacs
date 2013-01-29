@@ -1,7 +1,7 @@
 ### lisp.mk --- src/Makefile fragment for GNU Emacs
 
-## Copyright (C) 1985, 1987-1988, 1993-1995, 1999-2012
-##   Free Software Foundation, Inc.
+## Copyright (C) 1985, 1987-1988, 1993-1995, 1999-2013 Free Software
+## Foundation, Inc.
 
 ## This file is part of GNU Emacs.
 
@@ -34,8 +34,9 @@
 ## that does not have an explicit .el extension, but beware of any
 ## no-byte-compile ones.
 
-## Confusingly, term/internal is not in loadup, but is unconditionally
-## loaded by pc-win, which is.
+## Confusingly, international/cp51932 and international/eucjp-ms are
+## unconditionally loaded from language/japanese, instead of being
+## loaded directly from loadup.el; FIXME.
 
 ## Note that this list should not include lisp files which might not
 ## be present, like site-load.el and site-init.el; this makefile
@@ -95,6 +96,8 @@ lisp = \
 	$(lispsource)/language/greek.elc \
 	$(lispsource)/language/hebrew.elc \
 	$(lispsource)/language/japanese.elc \
+	$(lispsource)/international/cp51932.el \
+	$(lispsource)/international/eucjp-ms.el \
 	$(lispsource)/language/korean.elc \
 	$(lispsource)/language/lao.elc \
 	$(lispsource)/language/tai-viet.elc \
@@ -170,8 +173,17 @@ lisp = \
 	$(lispsource)/calendar/time-date.elc \
 	$(lispsource)/calendar/parse-time.elc \
 	$(lispsource)/emacs-lisp/easy-mmode.elc \
-	$(lispsource)/aquamacs/aquamacs-autoface-mode.elc
+	$(lispsource)/emacs-lisp/advice.elc \
+	$(lispsource)/emacs-lisp/nadvice.elc \
+	$(lispsource)/aquamacs/aquamacs-autoface-mode.elc \
+	$(lispsource)/aquamacs/aquamacs-macros.elc \
+	$(lispsource)/aquamacs/aquamacs-tools.elc \
+	$(lispsource)/aquamacs/macosx/mac-extra-functions.elc \
+	$(lispsource)/aquamacs/aquamacs-tool-bar.elc \
+	$(lispsource)/aquamacs/macosx/osx_defaults.elc \
+	$(lispsource)/aquamacs/aquamacs.elc
 
+#
 
 # entries starting with image-file.elc are specific to Aquamacs
 # where these files are pre-loaded.

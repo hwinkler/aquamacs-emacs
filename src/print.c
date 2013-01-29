@@ -1,7 +1,7 @@
 /* Lisp object printing and output streams.
 
-Copyright (C) 1985-1986, 1988, 1993-1995, 1997-2012
-  Free Software Foundation, Inc.
+Copyright (C) 1985-1986, 1988, 1993-1995, 1997-2013 Free Software
+Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -798,7 +798,7 @@ safe_debug_print (Lisp_Object arg)
   else
     fprintf (stderr, "#<%s_LISP_OBJECT 0x%08"pI"x>\r\n",
 	     !valid ? "INVALID" : "SOME",
-	     XHASH (arg));
+	     XLI (arg));
 }
 
 
@@ -1815,14 +1815,14 @@ print_object (Lisp_Object obj, register Lisp_Object printcharfun, int escapeflag
 #endif
 	  /* Implement a readable output, e.g.:
 	    #s(hash-table size 2 test equal data (k1 v1 k2 v2)) */
-	  /* Always print the size. */
+	  /* Always print the size.  */
 	  len = sprintf (buf, "#s(hash-table size %"pD"d", ASIZE (h->next));
 	  strout (buf, len, len, printcharfun);
 
-	  if (!NILP (h->test))
+	  if (!NILP (h->test.name))
 	    {
 	      strout (" test ", -1, -1, printcharfun);
-	      print_object (h->test, printcharfun, escapeflag);
+	      print_object (h->test.name, printcharfun, escapeflag);
 	    }
 
 	  if (!NILP (h->weak))
@@ -2027,21 +2027,96 @@ print_object (Lisp_Object obj, register Lisp_Object printcharfun, int escapeflag
 	  PRINTCHAR ('>');
 	  break;
 
-      /* Remaining cases shouldn't happen in normal usage, but let's print
-	 them anyway for the benefit of the debugger.  */
+	  /* Remaining cases shouldn't happen in normal usage, but let's
+	     print them anyway for the benefit of the debugger.  */
+
 	case Lisp_Misc_Free:
 	  strout ("#<misc free cell>", -1, -1, printcharfun);
 	  break;
 
 	case Lisp_Misc_Save_Value:
-	  strout ("#<save_value ", -1, -1, printcharfun);
 	  {
-	    int len = sprintf (buf, "ptr=%p int=%"pD"d",
-			       XSAVE_VALUE (obj)->pointer,
-			       XSAVE_VALUE (obj)->integer);
-	    strout (buf, len, len, printcharfun);
+	    int i;
+	    struct Lisp_Save_Value *v = XSAVE_VALUE (obj);
+
+	    strout ("#<save-value ", -1, -1, printcharfun);
+
+	    if (v->area)
+	      {
+		ptrdiff_t amount = v->data[1].integer;
+
+#if GC_MARK_STACK
+
+		/* If GC_MARK_STACK, valid_lisp_object_p is quite reliable,
+		   and so we try to print up to 8 objects we have saved.
+		   Although valid_lisp_object_p is slow, this shouldn't be
+		   a real bottleneck because we do not use this code under
+		   normal circumstances.  */
+
+		int limit = min (amount, 8);
+		Lisp_Object *area = v->data[0].pointer;
+
+		i = sprintf (buf, "with %"pD"d objects", amount);
+		strout (buf, i, i, printcharfun);
+
+		for (i = 0; i < limit; i++)
+		  {
+		    Lisp_Object maybe = area[i];
+
+		    if (valid_lisp_object_p (maybe) > 0)
+		      {
+			PRINTCHAR (' ');
+			print_object (maybe, printcharfun, escapeflag);
+		      }
+		    else
+		      strout (" <invalid>", -1, -1, printcharfun);
+		  }
+		if (i == limit && i < amount)
+		  strout (" ...", 4, 4, printcharfun);
+
+#else /* not GC_MARK_STACK */
+
+		/* If !GC_MARK_STACK, we have no reliable way to find
+		   whether Lisp_Object pointers points to an initialized
+		   objects, and so we do not ever trying to print them.  */
+
+		i = sprintf (buf, "with %"pD"d objects", amount);
+		strout (buf, i, i, printcharfun);
+
+#endif /* GC_MARK_STACK */
+	      }
+	    else
+	      {
+		/* Print each `data[N]' slot according to its type.  */
+
+#define PRINTX(index)							\
+  do {									\
+    i = 0;								\
+    if (v->type ## index == SAVE_UNUSED)				\
+      i = sprintf (buf, "<unused>");					\
+    else if (v->type ## index == SAVE_INTEGER)				\
+      i = sprintf (buf, "<integer %"pD"d>", v->data[index].integer);	\
+    else if (v->type ## index == SAVE_POINTER)				\
+      i = sprintf (buf, "<pointer %p>", v->data[index].pointer);	\
+    else /* SAVE_OBJECT */						\
+      print_object (v->data[index].object, printcharfun, escapeflag);	\
+    if (i)								\
+      strout (buf, i, i, printcharfun);					\
+  } while (0)
+
+		PRINTX (0);
+		PRINTCHAR (' ');
+		PRINTX (1);
+		PRINTCHAR (' ');
+		PRINTX (2);
+		PRINTCHAR (' ');
+		PRINTX (3);
+
+#undef PRINTX
+
+	      }
+	    PRINTCHAR ('>');
 	  }
-	  PRINTCHAR ('>');
 	  break;
 
 	default:
@@ -2075,7 +2150,7 @@ print_object (Lisp_Object obj, register Lisp_Object printcharfun, int escapeflag
 /* Print a description of INTERVAL using PRINTCHARFUN.
    This is part of printing a string that has text properties.  */
 
-void
+static void
 print_interval (INTERVAL interval, Lisp_Object printcharfun)
 {
   if (NILP (interval->plist))

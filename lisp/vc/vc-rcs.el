@@ -1,6 +1,6 @@
 ;;; vc-rcs.el --- support for RCS version-control
 
-;; Copyright (C) 1992-2012 Free Software Foundation, Inc.
+;; Copyright (C) 1992-2013 Free Software Foundation, Inc.
 
 ;; Author:     FSF (see vc.el for full credits)
 ;; Maintainer: Andre Spiegel <spiegel@gnu.org>
@@ -89,6 +89,9 @@ to use --brief and sets this variable to remember whether it worked."
   :type '(choice (const :tag "Work out" nil) (const yes) (const no))
   :group 'vc-rcs)
 
+;; This needs to be autoloaded because vc-rcs-registered uses it (via
+;; vc-default-registered), and vc-hooks needs to be able to check
+;; for a registered backend without loading every backend.
 ;;;###autoload
 (defcustom vc-rcs-master-templates
   (purecopy '("%sRCS/%s,v" "%s%s,v" "%sRCS/%s"))

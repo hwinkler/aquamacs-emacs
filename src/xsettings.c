@@ -1,6 +1,6 @@
 /* Functions for handling font and other changes dynamically.
 
-Copyright (C) 2009-2012  Free Software Foundation, Inc.
+Copyright (C) 2009-2013 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -29,7 +29,6 @@ along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
 #include "keyboard.h"
 #include "blockinput.h"
 #include "termhooks.h"
-#include "termopts.h"
 
 #include <X11/Xproto.h>
 

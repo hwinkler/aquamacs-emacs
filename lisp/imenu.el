@@ -1,6 +1,6 @@
 ;;; imenu.el --- framework for mode-specific buffer indexes  -*- lexical-binding: t -*-
 
-;; Copyright (C) 1994-1998, 2001-2012 Free Software Foundation, Inc.
+;; Copyright (C) 1994-1998, 2001-2013 Free Software Foundation, Inc.
 
 ;; Author: Ake Stenhoff <etxaksf@aom.ericsson.se>
 ;;         Lars Lindberg <lli@sypro.cap.se>
@@ -447,6 +447,8 @@ Don't move point."
 Simple elements in the alist look like (INDEX-NAME . POSITION).
 POSITION is the buffer position of the item; to go to the item
 is simply to move point to that position.
+POSITION is passed to `imenu-default-goto-function', so it can be a non-number
+if that variable has been changed (e.g. Semantic uses overlays for POSITIONs).
 
 Special elements look like (INDEX-NAME POSITION FUNCTION ARGUMENTS...).
 To \"go to\" a special element means applying FUNCTION
@@ -546,9 +548,7 @@ The returned alist DOES NOT share structure with MENULIST."
 Return a split and sorted copy of ALIST.  The returned alist DOES
 NOT share structure with ALIST."
   (mapcar (lambda (elt)
-            (if (and (consp elt)
-                     (stringp (car elt))
-                     (listp (cdr elt)))
+            (if (imenu--subalist-p elt)
                 (imenu--split-menu (cdr elt) (car elt))
               elt))
 	  alist))
@@ -683,8 +683,6 @@ The alternate method, which is the one most often used, is to call
 	   (goto-char (point-max))
 	   ;; Search for the function
 	   (while (funcall imenu-prev-index-position-function)
-             (when (= pos (point))
-               (error "Infinite loop at %s:%d: imenu-prev-index-position-function does not move point" (buffer-name) pos))
              (setq pos (point))
 	     (save-excursion
 	       (setq name (funcall imenu-extract-index-name-function)))
@@ -1018,7 +1016,7 @@ for more information."
   (if (stringp index-item)
       (setq index-item (assoc index-item (imenu--make-index-alist))))
   (when index-item
-    (push-mark)
+    (push-mark nil t)
     (let* ((is-special-item (listp (cdr index-item)))
 	   (function
 	    (if is-special-item

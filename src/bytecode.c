@@ -1,5 +1,6 @@
 /* Execution of byte code produced by bytecomp.el.
-   Copyright (C) 1985-1988, 1993, 2000-2012 Free Software Foundation, Inc.
+   Copyright (C) 1985-1988, 1993, 2000-2013 Free Software Foundation,
+   Inc.
 
 This file is part of GNU Emacs.
 
@@ -86,8 +87,6 @@ Lisp_Object Qbyte_code_meter;
 
 #endif /* BYTE_CODE_METER */
 
-
-Lisp_Object Qbytecode;
 
 /*  Byte codes: */
 
@@ -1579,7 +1578,9 @@ exec_byte_code (Lisp_Object bytestr, Lisp_Object vector, Lisp_Object maxdepth,
 	  NEXT;
 
 	CASE (Binteractive_p):	/* Obsolete since 24.1.  */
-	  PUSH (Finteractive_p ());
+	  BEFORE_POTENTIAL_GC ();
+	  PUSH (call0 (intern ("interactive-p")));
+	  AFTER_POTENTIAL_GC ();
 	  NEXT;
 
 	CASE (Bforward_char):
@@ -1961,8 +1962,6 @@ exec_byte_code (Lisp_Object bytestr, Lisp_Object vector, Lisp_Object maxdepth,
 void
 syms_of_bytecode (void)
 {
-  DEFSYM (Qbytecode, "byte-code");
-
   defsubr (&Sbyte_code);
 
 #ifdef BYTE_CODE_METER

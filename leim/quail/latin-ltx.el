@@ -1,6 +1,6 @@
 ;;; latin-ltx.el --- Quail package for TeX-style input -*-coding: utf-8;-*-
 
-;; Copyright (C) 2001-2012  Free Software Foundation, Inc.
+;; Copyright (C) 2001-2013 Free Software Foundation, Inc.
 ;; Copyright (C) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009,
 ;;   2010, 2011
 ;;   National Institute of Advanced Industrial Science and Technology (AIST)
@@ -463,7 +463,7 @@ system, including many technical ones.  Examples:
  ("\\infty" ?∞)
  ("\\int" ?∫)
  ("\\intercal" ?⊺)
- ("\\langle" ?〈)
+ ("\\langle" ?⟨) ;; Was ?〈, see bug#12948.
  ("\\lbrace" ?{)
  ("\\lbrack" ?\[)
  ("\\lceil" ?⌈)
@@ -475,7 +475,7 @@ system, including many technical ones.  Examples:
  ("\\leftharpoondown" ?↽)
  ("\\leftharpoonup" ?↼)
  ("\\leftleftarrows" ?⇇)
- ("\\leftparengtr" ?〈)
+ ;; ("\\leftparengtr" ?〈), see bug#12948.
  ("\\leftrightarrow" ?↔)
  ("\\leftrightarrows" ?⇆)
  ("\\leftrightharpoons" ?⇋)
@@ -593,7 +593,7 @@ system, including many technical ones.  Examples:
  ("\\propto" ?∝)
  ("\\qed" ?∎)
  ("\\quad" ? )
- ("\\rangle" ?〉)
+ ("\\rangle" ?⟩) ;; Was ?〉, see bug#12948.
  ("\\rbrace" ?})
  ("\\rbrack" ?\])
  ("\\rceil" ?⌉)
@@ -604,7 +604,7 @@ system, including many technical ones.  Examples:
  ("\\rightharpoonup" ?⇀)
  ("\\rightleftarrows" ?⇄)
  ("\\rightleftharpoons" ?⇌)
- ("\\rightparengtr" ?〉)
+ ;; ("\\rightparengtr" ?⦔) ;; Was ?〉, see bug#12948.
  ("\\rightrightarrows" ?⇉)
  ("\\rightthreetimes" ?⋌)
  ("\\risingdotseq" ?≓)
